@@ -11,90 +11,7 @@
    AUTHENTICATION
 ========================================================= */
 
-const isLoggedIn =
-    localStorage.getItem("isLoggedIn") === "true";
-
-
-/*
-    The reservation page can still be viewed directly.
-
-    Login enforcement can be enabled later when the
-    authentication system is fully connected.
-*/
-
-
-/* =========================================================
-   NAVIGATION BUTTONS
-========================================================= */
-
-const bookButton =
-    document.getElementById("bookButton");
-
-
-const profileButton =
-    document.getElementById("profileButton");
-
-
-/*
-    BOOK NOW
-*/
-
-if (bookButton) {
-
-    bookButton.addEventListener(
-        "click",
-        () => {
-
-            if (isLoggedIn) {
-
-                window.location.href =
-                    "reservation.html";
-
-            } else {
-
-                window.location.href =
-                    "login.html";
-
-            }
-
-        }
-    );
-
-}
-
-
-/*
-    PROFILE
-*/
-
-if (profileButton) {
-
-    profileButton.addEventListener(
-        "click",
-        () => {
-
-            if (isLoggedIn) {
-
-                window.location.href =
-                    "guest-dashboard.html";
-
-            } else {
-
-                window.location.href =
-                    "login.html";
-
-            }
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   RESERVATION STATE
-========================================================= */
-
+const publicHeader = document.querySelector('[data-public-header]');
 const reservationData = {
 
     adults: 2,
@@ -217,18 +134,16 @@ setMinimumDate();
 
 function loadPendingReservation() {
 
-    const saved =
-        sessionStorage.getItem(
-            "pendingReservation"
-        );
-
-
-    if (!saved) {
-        return;
-    }
-
-
     try {
+        const saved =
+            sessionStorage.getItem(
+                "pendingReservation"
+            );
+
+        if (!saved) {
+            return;
+        }
+
 
         const pending =
             JSON.parse(
@@ -292,41 +207,13 @@ function loadPendingReservation() {
             Guest count
         */
 
-        if (pending.guests) {
-
-            const match =
-                pending.guests.match(
-                    /(\d+)/
-                );
-
-
-            if (match) {
-
-                const guestCount =
-                    Number(
-                        match[1]
-                    );
-
-
-                if (
-                    Number.isFinite(
-                        guestCount
-                    ) &&
-                    guestCount > 0
-                ) {
-
-                    reservationData.adults =
-                        Math.min(
-                            guestCount,
-                            4
-                        );
-
-                }
-
+        if (typeof pending.guests === 'string') {
+            // A homepage range is a preference, never an exact party count.
+            if (/^\d+$/.test(pending.guests) && Number(pending.guests) > 0) { reservationData.adults = Number(pending.guests); sessionStorage.removeItem('reservationGuestRangePreference'); }
+            else if (/^\d+\s*[–-]\s*\d+\s+Guests$|^\d+\+\s+Guests$/i.test(pending.guests)) {
+                sessionStorage.setItem('reservationGuestRangePreference', pending.guests);
             }
-
         }
-
 
         /*
             Facility / quarters
@@ -457,6 +344,8 @@ function selectMatchingFacility(
         return;
     }
 
+    // An explicit homepage choice replaces form defaults; it is not an add-on.
+    document.querySelectorAll('input[name="facility"]').forEach(input => { input.checked = input === checkbox; });
 
     checkbox.checked =
         true;
@@ -782,7 +671,7 @@ function getFacilityName(
             "Lighthouse KTV Lounge",
 
         event:
-            "Celebration Grand Event Place",
+            "Celebration Event Package — Event Place, Swimming Pool & Stage Band",
 
         buyout:
             "Full Catherine's Resort Buyout"
@@ -802,7 +691,27 @@ function getFacilityName(
    UPDATE SELECTED FACILITIES
 ========================================================= */
 
+function normalizeEventSelection() {
+    const event = document.querySelector('input[name="facility"][value="event"]');
+    const pool = document.querySelector('input[name="facility"][value="pool"]');
+    if (!event || !pool) return;
+    if (event.checked) pool.checked = false;
+    pool.disabled = event.checked;
+    pool.closest('.facility-option')?.classList.toggle('selected', pool.checked);
+    const note = document.getElementById('eventPoolIncluded');
+    if (note) note.hidden = !event.checked;
+}
 function updateFacilities() {
+    normalizeEventSelection();
+    document.querySelectorAll('input[name="facility"]').forEach(input => {
+        const card = input.closest('.facility-option');
+        card.classList.toggle('selected', input.checked);
+        card.classList.toggle('included', input.disabled && input.value === 'pool');
+        const state = card.querySelector('.facility-selection-state');
+        if (state) state.textContent = input.disabled
+            ? (input.value === 'pool' ? 'Included in Event' : 'Unavailable')
+            : (input.checked ? 'Selected' : 'Select');
+    });
 
     reservationData.facilities =
         [];
@@ -824,6 +733,7 @@ function updateFacilities() {
 
 
             reservationData.facilities.push({
+                ...(checkbox.value === "event" ? { packageVersion: 2 } : {}),
 
                 name:
                     getFacilityName(
@@ -933,8 +843,8 @@ function formatCurrency(
         safeAmount.toLocaleString(
             "en-PH",
             {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
             }
         )
     );
@@ -1011,8 +921,14 @@ function formatReservationDate(
 ========================================================= */
 
 function updateSummary() {
+    const slot = window.BookingSlots?.[stayDuration?.value];
+    const slotLabel = document.getElementById("staySlotLabel");
+    const summarySlot = document.getElementById("summaryDuration");
+    if (slotLabel) slotLabel.textContent = slot?.label || "Select a stay slot.";
+    if (summarySlot) summarySlot.textContent = slot?.label || "Select a stay slot.";
 
     updateFacilities();
+
 
 
     const prices =
@@ -1342,53 +1258,48 @@ const progressSteps =
    UPDATE PROGRESS BAR
 ========================================================= */
 
-function updateProgress(
-    currentStep
-) {
-
-    progressSteps.forEach(
-        step => {
-
-            const stepNumber =
-                Number(
-                    step.dataset.step
-                );
-
-
-            step.classList.remove(
-                "completed",
-                "active"
-            );
-
-
-            if (
-                stepNumber <
-                currentStep
-            ) {
-
-                step.classList.add(
-                    "completed"
-                );
-
-            }
-
-
-            if (
-                stepNumber ===
-                currentStep
-            ) {
-
-                step.classList.add(
-                    "active"
-                );
-
-            }
-
-        }
-    );
-
+const completedSteps = new Set();
+let activeProgressStep = 1;
+const progressBar = document.querySelector('.progress-section');
+const compactProgress = document.createElement('p');
+compactProgress.className = 'progress-compact';
+compactProgress.setAttribute('aria-live', 'polite');
+progressBar.prepend(compactProgress);
+function progressOffset() {
+    return (publicHeader?.getBoundingClientRect().height || 0) + progressBar.getBoundingClientRect().height + 16;
 }
-
+function updateProgress(currentStep = activeProgressStep) {
+    activeProgressStep = currentStep;
+    progressSteps.forEach(step => {
+        const number = Number(step.dataset.step);
+        const complete = completedSteps.has(number);
+        step.classList.toggle('completed', complete);
+        step.classList.toggle('active', number === currentStep);
+        if (number === currentStep) step.setAttribute('aria-current', 'step');
+        else step.removeAttribute('aria-current');
+        step.querySelector('.step-circle').textContent = complete ? '\u2713' : number;
+        step.setAttribute('aria-label', 'Step ' + number + ': ' + step.querySelector('strong').textContent.trim() + (complete ? ', completed' : ''));
+    });
+    compactProgress.textContent = 'Step ' + currentStep + ' of 4 \u00b7 ' + progressSteps[currentStep - 1].querySelector('strong').textContent.trim();
+}
+function invalidateProgress(from) {
+    for (let step = from; step <= 4; step++) completedSteps.delete(step);
+    updateProgress();
+}
+function validateProgressStep(step) {
+    if (!validateStep(step)) { invalidateProgress(step); scrollToStep(step); return false; }
+    completedSteps.add(step);
+    updateProgress();
+    return true;
+}
+const progressResize = new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--reservation-progress-height', progressBar.getBoundingClientRect().height + 'px');
+});
+progressResize.observe(progressBar);
+document.querySelectorAll('.reservation-step').forEach(section => {
+    ['input', 'change'].forEach(event => section.addEventListener(event, () => invalidateProgress(Number(section.dataset.stepContent))));
+    section.querySelectorAll('.counter-button').forEach(button => button.addEventListener('click', () => invalidateProgress(1)));
+});
 
 /* =========================================================
    SCROLL TO RESERVATION SECTION
@@ -1440,8 +1351,8 @@ function scrollToStep(
         offset.
     */
 
-    const offset =
-        125;
+    updateProgress(stepNumber);
+    const offset = progressOffset();
 
 
     const targetPosition =
@@ -1459,7 +1370,7 @@ function scrollToStep(
             ),
 
         behavior:
-            "smooth"
+            "instant"
 
     });
 
@@ -1700,7 +1611,7 @@ nextButtons.forEach(
                 */
 
                 if (
-                    !validateStep(
+                    !validateProgressStep(
                         currentStep
                     )
                 ) {
@@ -1767,124 +1678,26 @@ previousButtons.forEach(
    PROGRESS STEP CLICK
 ========================================================= */
 
-progressSteps.forEach(
-    step => {
-
-        step.style.cursor =
-            "pointer";
-
-
-        step.addEventListener(
-            "click",
-            () => {
-
-                const stepNumber =
-                    Number(
-                        step.dataset.step
-                    );
-
-
-                scrollToStep(
-                    stepNumber
-                );
-
+progressSteps.forEach(step => {
+    step.setAttribute('role', 'button');
+    step.tabIndex = 0;
+    step.setAttribute('aria-controls', document.querySelector('[data-step-content="' + step.dataset.step + '"]').id);
+    const navigate = () => {
+        const destination = Number(step.dataset.step);
+        if (destination > activeProgressStep) {
+            for (let number = 1; number < destination; number++) {
+                if (!validateProgressStep(number)) return;
             }
-        );
-
-    }
-);
-
-
-/* =========================================================
-   DETECT CURRENT SECTION WHILE SCROLLING
-========================================================= */
-
-let scrollTimeout =
-    null;
-
-
-function detectCurrentSection() {
-
-    const sections =
-        document.querySelectorAll(
-            ".reservation-step"
-        );
-
-
-    if (
-        !sections.length
-    ) {
-
-        return;
-
-    }
-
-
-    const marker =
-        window.scrollY + 180;
-
-
-    let currentStep =
-        1;
-
-
-    sections.forEach(
-        section => {
-
-            const top =
-                section.offsetTop;
-
-
-            if (
-                marker >= top
-            ) {
-
-                currentStep =
-                    Number(
-                        section.dataset
-                            .stepContent
-                    );
-
-            }
-
         }
-    );
-
-
-    updateProgress(
-        currentStep
-    );
-
-}
-
-
-window.addEventListener(
-    "scroll",
-    () => {
-
-        if (
-            scrollTimeout
-        ) {
-
-            clearTimeout(
-                scrollTimeout
-            );
-
-        }
-
-
-        scrollTimeout =
-            setTimeout(
-                detectCurrentSection,
-                50
-            );
-
-    },
-    {
-        passive: true
-    }
-);
-
+        if (destination === 4) prepareReview();
+        scrollToStep(destination);
+    };
+    step.addEventListener('click', navigate);
+    step.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(); }
+    });
+});
+// The form's navigation owns the active step. Scrolling alone never validates a step.
 
 /* =========================================================
    PREPARE REVIEW
@@ -1939,7 +1752,7 @@ function prepareReview() {
 
         reviewDuration.textContent =
             selected
-                ? selected.textContent.trim()
+                ? (window.BookingSlots?.[stayDuration.value]?.label || selected.textContent.trim())
                 : "—";
 
     }
@@ -2079,6 +1892,8 @@ function prepareReview() {
 function buildReservationObject(
     reference
 ) {
+    if (!window.BookingSlots?.[stayDuration?.value]) throw new Error("Please select a valid stay slot.");
+    if (reservationData.facilities.some(f => f.value === "event") && reservationData.facilities.some(f => f.value === "pool")) throw new Error("Pool is included in Event; remove the separate Pool charge.");
 
     const prices =
         calculatePrices();
@@ -2093,10 +1908,8 @@ function buildReservationObject(
                 ? checkinDate.value
                 : "",
 
-        duration:
-            stayDuration
-                ? stayDuration.value
-                : "",
+        staySlotId: stayDuration ? stayDuration.value : "",
+        duration: window.BookingSlots?.[stayDuration?.value]?.label || "",
 
         adults:
             reservationData.adults,
@@ -2173,11 +1986,88 @@ const confirmationNumber =
     );
 
 
+let reservationSubmitLock = false;
+let reservationAttempt = null;
+let lastSavedReservation = null;
+let confirmationEmailSentFor = "";
+
+
+async function generateUniqueReservationReference() {
+    if (!window.SharedReservations) throw new Error("Shared reservations are unavailable. Please retry.");
+    return window.SharedReservations.generateReference();
+}
+
+
+function showReservationSaveError(message) {
+
+    alert(
+        message ||
+        "Reservation could not be saved. Please try again. Your form details have been kept."
+    );
+
+}
+
+
+function isCloudReservationTest() { return window.SHARED_RESERVATIONS_CONFIG?.cloudTest === true; }
+function reservationConfirmationDestination() {
+    return lastSavedReservation?.reference
+        ? "my-reservation.html?reservation=" + encodeURIComponent(lastSavedReservation.reference)
+        : "guest-dashboard.html";
+}
+function presentReservationConfirmation(saved) {
+    completedSteps.add(4);
+    updateProgress(4);
+    if (closeModal) closeModal.textContent = "View Reservation";
+
+    if (
+        confirmationNumber &&
+        saved &&
+        saved.reference
+    ) {
+        confirmationNumber.textContent =
+            saved.reference;
+    }
+
+    if (successModal) {
+        successModal.classList.add("show");
+        document.body.style.overflow = "hidden";
+    }
+
+}
+
+
+function sendConfirmationEmailOnce(saved) {
+
+    if (!window.SharedReservations?.emailEnabled || !saved || !saved.reference) {
+        return;
+    }
+
+    if (confirmationEmailSentFor === saved.reference) {
+        return;
+    }
+
+    try {
+        sendReservationConfirmationEmail(saved);
+        confirmationEmailSentFor = saved.reference;
+    } catch (emailErr) {
+        console.error(
+            "Failed to send reservation confirmation email:",
+            emailErr
+        );
+    }
+
+}
+
+
 if (confirmButton) {
 
     confirmButton.addEventListener(
         "click",
-        () => {
+        async () => {
+
+            if (reservationSubmitLock) {
+                return;
+            }
 
             /*
                 Validate every required
@@ -2185,7 +2075,7 @@ if (confirmButton) {
             */
 
             if (
-                !validateStep(1)
+                !validateProgressStep(1)
             ) {
 
                 scrollToStep(1);
@@ -2196,7 +2086,7 @@ if (confirmButton) {
 
 
             if (
-                !validateStep(2)
+                !validateProgressStep(2)
             ) {
 
                 scrollToStep(2);
@@ -2207,7 +2097,7 @@ if (confirmButton) {
 
 
             if (
-                !validateStep(3)
+                !validateProgressStep(3)
             ) {
 
                 scrollToStep(3);
@@ -2251,84 +2141,98 @@ if (confirmButton) {
             }
 
 
-            /*
-                Generate temporary reference.
-            */
+            reservationSubmitLock = true;
+            confirmButton.disabled = true;
 
-            const randomNumber =
-                Math.floor(
-                    100000 +
-                    Math.random() *
-                    900000
+            try {
+                if (!window.SharedReservations) throw new Error("Shared reservations are unavailable. Please retry.");
+                const { user } = await window.SharedReservations.identity();
+                if (
+                    lastSavedReservation &&
+                    lastSavedReservation.reference &&
+                    lastSavedReservation.ownerUid === user.uid
+                ) {
+                    presentReservationConfirmation(lastSavedReservation);
+                    sendConfirmationEmailOnce(lastSavedReservation);
+                    return;
+                }
+
+                const hadReservationAttempt = Boolean(reservationAttempt);
+                if (reservationAttempt && window.SharedReservations.recoverReservationAttempt) {
+                    const recovered = await window.SharedReservations.recoverReservationAttempt(reservationAttempt);
+                    if (recovered) { lastSavedReservation = recovered; presentReservationConfirmation(recovered); sendConfirmationEmailOnce(recovered); return; }
+                }
+                if (!reservationAttempt) {
+                    reservationAttempt = buildReservationObject(
+                        await generateUniqueReservationReference()
+                    );
+                    reservationAttempt.ownerUid = user.uid;
+                    // Retain this snapshot and identity across uncertain saves/retries.
+                    reservationAttempt.submissionAttemptId =
+                        window.crypto?.randomUUID?.() ||
+                        Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+                }
+
+                const availability = await window.ReservationCalendar?.verifyBeforeSubmit(reservationAttempt);
+                if (availability?.status === "unavailable") { if (!hadReservationAttempt) reservationAttempt = null; throw new Error("The selected date is unavailable for these facilities and stay slot. Choose another date."); }
+
+                let saved = null;
+
+                for (let attempt = 0; attempt < 3 && !saved; attempt += 1) {
+
+                    const reservation = reservationAttempt;
+
+                    const result =
+                        await saveReservationHistory(
+                            reservation
+                        );
+
+                    if (
+                        result &&
+                        result.success &&
+                        result.reservation
+                    ) {
+                        saved = result.reservation;
+                        break;
+                    }
+
+                    if (
+                        result &&
+                        result.error === "REFERENCE_COLLISION"
+                    ) {
+                        reservationAttempt.reference =
+                            await generateUniqueReservationReference();
+                        continue;
+                    }
+
+                    showReservationSaveError(
+                        result && result.message
+                    );
+                    return;
+                }
+
+                if (!saved) {
+                    showReservationSaveError(
+                        "Reservation could not be saved. Please try again. Your form details have been kept."
+                    );
+                    return;
+                }
+
+                lastSavedReservation = saved;
+                presentReservationConfirmation(saved);
+                sendConfirmationEmailOnce(saved);
+
+            } catch (err) {
+
+                console.error("Reservation save failed:", err);
+                showReservationSaveError(
+                    err.message || "Shared reservation could not be saved. Please try again. Your form details have been kept."
                 );
 
+            } finally {
 
-            const reference =
-                `CBLR-${randomNumber}`;
-
-
-            if (
-                confirmationNumber
-            ) {
-
-                confirmationNumber.textContent =
-                    reference;
-
-            }
-
-
-            /*
-                Create reservation object.
-            */
-
-            const reservation =
-                buildReservationObject(
-                    reference
-                );
-
-
-            /*
-                Save current reservation.
-            */
-
-            localStorage.setItem(
-                "currentReservation",
-                JSON.stringify(
-                    reservation
-                )
-            );
-
-
-            /*
-                Also save reservation history.
-            */
-
-            saveReservationHistory(
-                reservation
-            );
-
-
-            /*
-                Send Confirmation Email via EmailJS
-            */
-
-            sendReservationConfirmationEmail(reservation);
-
-
-            /*
-                Show confirmation modal.
-            */
-
-            if (
-                successModal
-            ) {
-
-                successModal.classList.add(
-                    "show"
-                );
-
-                document.body.style.overflow =
-                    "hidden";
+                reservationSubmitLock = false;
+                confirmButton.disabled = false;
 
             }
 
@@ -2411,59 +2315,10 @@ function sendReservationConfirmationEmail(reservation) {
    RESERVATION HISTORY & MASTER SYNC
 ========================================================= */
 
-function saveReservationHistory(
-    reservation
-) {
-
-    // 1. If ResortDB engine is available, use its synchronized registration
-    if (
-        typeof window !== "undefined" &&
-        window.ResortDB &&
-        typeof window.ResortDB.addReservation === "function"
-    ) {
-        window.ResortDB.addReservation(reservation);
-        return;
-    }
-
-    // 2. Direct fallback
-    let history = [];
-    const saved = localStorage.getItem("reservationHistory");
-
-    if (saved) {
-        try {
-            history = JSON.parse(saved);
-            if (!Array.isArray(history)) {
-                history = [];
-            }
-        } catch {
-            history = [];
-        }
-    }
-
-    // Prepend new reservation to appear at top of list
-    history.unshift(reservation);
-
-    localStorage.setItem(
-        "reservationHistory",
-        JSON.stringify(history)
-    );
-
-    // Broadcast sync trigger to update open admin tabs
-    localStorage.setItem(
-        "resort_reservation_sync",
-        Date.now().toString()
-    );
-
-    try {
-        if (typeof window !== "undefined") {
-            window.dispatchEvent(
-                new CustomEvent("resort:reservation-added", {
-                    detail: reservation
-                })
-            );
-        }
-    } catch (e) {}
-
+async function saveReservationHistory(reservation) {
+    // Never fall back to local history or upload its seed/demo bookings.
+    if (!window.SharedReservations) throw new Error("Shared reservations are unavailable. Please retry.");
+    return window.SharedReservations.createReservation(reservation);
 }
 
 
@@ -2488,7 +2343,7 @@ if (closeModal) {
 
 
             window.location.href =
-                "guest-dashboard.html";
+                reservationConfirmationDestination();
 
         }
     );
@@ -2513,6 +2368,7 @@ if (
                 successModal
             ) {
 
+                if (isCloudReservationTest() && lastSavedReservation) { window.location.href = reservationConfirmationDestination(); return; }
                 successModal.classList.remove(
                     "show"
                 );
@@ -2545,6 +2401,7 @@ document.addEventListener(
             )
         ) {
 
+            if (isCloudReservationTest() && lastSavedReservation) { window.location.href = reservationConfirmationDestination(); return; }
             successModal.classList.remove(
                 "show"
             );
@@ -2563,6 +2420,8 @@ document.addEventListener(
    INITIALIZE PAGE
 ========================================================= */
 
+let hasFreshHomepageChoices = false;
+try { hasFreshHomepageChoices = Boolean(sessionStorage.getItem("pendingReservation")); } catch { /* Optional storage. */ }
 loadPendingReservation();
 
 updateGuestCounters();
@@ -2573,4 +2432,51 @@ updateSummary();
 
 updateProgress(1);
 
-detectCurrentSection();
+
+// Tab-scoped form draft only; never an authentication or booking-save signal.
+const bookingDraftKey = "reservationSignInDraft";
+const bookingDraftFields = ["checkinDate", "stayDuration", "honorific", "fullName", "mobileNumber", "emailAddress", "specialRequests"];
+function saveBookingDraft() {
+    if (lastSavedReservation) return;
+    try {
+        const values = Object.fromEntries(bookingDraftFields.map(id => [id, document.getElementById(id)?.value || ""]));
+        sessionStorage.setItem(bookingDraftKey, JSON.stringify({ savedAt: Date.now(), values,
+            counts: { adults: reservationData.adults, children: reservationData.children, senior: reservationData.senior },
+            facilities: [...document.querySelectorAll('input[name="facility"]:checked')].map(input => input.value),
+            terms: Boolean(document.getElementById("agreeTerms")?.checked)
+        }));
+    } catch { /* Storage availability never grants access. */ }
+}
+function restoreBookingDraft() {
+    if (hasFreshHomepageChoices) return;
+    try {
+        const draft = JSON.parse(sessionStorage.getItem(bookingDraftKey) || "null");
+        if (!draft || Date.now() - draft.savedAt > 30 * 60 * 1000) return;
+        for (const id of bookingDraftFields) {
+            const input = document.getElementById(id);
+            if (input && typeof draft.values?.[id] === "string" && (id !== "stayDuration" || window.BookingSlots?.[draft.values[id]])) input.value = draft.values[id];
+        }
+        for (const key of ["adults", "children", "senior"]) {
+            if (Number.isInteger(draft.counts?.[key]) && draft.counts[key] >= 0 && draft.counts[key] <= 100) reservationData[key] = draft.counts[key];
+        }
+        if (Array.isArray(draft.facilities)) document.querySelectorAll('input[name="facility"]').forEach(input => { input.checked = draft.facilities.includes(input.value); input.closest(".facility-option")?.classList.toggle("selected", input.checked); });
+        const terms = document.getElementById("agreeTerms");
+        if (terms) terms.checked = draft.terms === true;
+        updateGuestCounters(); updateFacilities(); updateSummary();
+    } catch { /* Malformed drafts are ignored, not trusted. */ }
+}
+restoreBookingDraft();
+const bookingConfirm = document.getElementById("confirmReservation");
+if (bookingConfirm) bookingConfirm.disabled = true;
+(async () => {
+    try {
+        // identity() waits for the named app's initial onAuthStateChanged event.
+        await window.SharedReservations.identity();
+        if (bookingConfirm) bookingConfirm.disabled = false;
+        try { sessionStorage.removeItem(bookingDraftKey); } catch { /* Optional draft. */ }
+    } catch {
+        saveBookingDraft();
+        window.location.replace("login.html?next=reservation.html");
+    }
+})();
+window.addEventListener("pagehide", saveBookingDraft);

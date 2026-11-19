@@ -27,6 +27,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const confirmPasswordError = document.getElementById("confirmPasswordError");
     const formStatus = document.getElementById("formStatus");
 
+    const termsError = document.getElementById("termsError");
+    function consentError(message = "") {
+        if (termsError) termsError.textContent = message;
+        agreeTermsInput?.setAttribute("aria-invalid", String(Boolean(message)));
+    }
+    agreeTermsInput?.addEventListener("invalid", event => {
+        event.preventDefault();
+        consentError("Please agree to the Terms of Service and Privacy Policy to create an account.");
+        agreeTermsInput.focus();
+    });
+    agreeTermsInput?.addEventListener("change", () => {
+        if (agreeTermsInput.checked) consentError();
+    });
+
     // Toggles
     const toggleRegisterPassword = document.getElementById("toggleRegisterPassword");
     const toggleConfirmPassword = document.getElementById("toggleConfirmPassword");
@@ -60,6 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ===================================================== */
 
     function clearErrors() {
+        consentError();
         if (fullNameError) fullNameError.textContent = "";
         if (phoneError) phoneError.textContent = "";
         if (emailError) emailError.textContent = "";
@@ -105,13 +120,14 @@ document.addEventListener("DOMContentLoaded", () => {
             const isPassword = inputEl.type === "password";
             if (isPassword) {
                 inputEl.type = "text";
-                toggleBtn.textContent = "◉";
+                toggleBtn.classList.add("is-visible");
                 toggleBtn.setAttribute("aria-label", "Hide password");
             } else {
                 inputEl.type = "password";
-                toggleBtn.textContent = "◌";
+                toggleBtn.classList.remove("is-visible");
                 toggleBtn.setAttribute("aria-label", "Show password");
             }
+            toggleBtn.setAttribute("aria-pressed", String(isPassword));
         });
     }
 
@@ -177,47 +193,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     /* =====================================================
-       USER DATABASE INTEGRATION (ResortDB / LocalStorage)
-    ===================================================== */
-
-    function getRegisteredUsers() {
-        if (window.ResortDB) {
-            return window.ResortDB.getAllUsers();
-        }
-        try {
-            const usersJson = localStorage.getItem("resortUsers");
-            return usersJson ? JSON.parse(usersJson) : [];
-        } catch (e) {
-            console.error("Error reading resortUsers from localStorage", e);
-            return [];
-        }
-    }
-
-    function saveUser(newUser) {
-        if (window.ResortDB) {
-            return window.ResortDB.registerUser(newUser);
-        }
-        const users = getRegisteredUsers();
-        users.push(newUser);
-        localStorage.setItem("resortUsers", JSON.stringify(users));
-        return { success: true, user: newUser };
-    }
-
-    function isEmailRegistered(email) {
-        if (window.ResortDB) {
-            return window.ResortDB.isEmailRegistered(email);
-        }
-        const users = getRegisteredUsers();
-        return users.some(u => u && u.email && u.email.toLowerCase() === email.toLowerCase());
-    }
-
-
-    /* =====================================================
        REGISTER FORM SUBMISSION
     ===================================================== */
 
+    let registering = false;
     if (registerForm) {
-        registerForm.addEventListener("submit", (e) => {
+        registerForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             clearErrors();
 
@@ -256,10 +237,6 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (!isValidEmail(email)) {
                 if (emailError) emailError.textContent = "Please enter a valid email address.";
                 isValid = false;
-            } else if (isEmailRegistered(email)) {
-                if (emailError) emailError.textContent = "An account with this email address already exists. Sign in instead?";
-                showStatus("This email is already registered. Please click 'Sign in' below.", "error");
-                isValid = false;
             }
 
             // 4. Password Validation
@@ -282,52 +259,54 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 6. Terms Agreement
             if (!agreeTerms) {
-                showStatus("You must agree to the Terms of Service and Privacy Policy to create an account.", "error");
+                consentError("Please agree to the Terms of Service and Privacy Policy to create an account.");
+                agreeTermsInput?.focus();
                 isValid = false;
             }
 
             if (!isValid) return;
 
-            // Save new user account in built-in database
-            const newUser = {
-                fullName: fullName,
-                email: email,
-                phone: phone,
-                password: password,
-                membershipTier: "Sanctuary Member",
-                subscribeOffers: subscribeOffers
-            };
-
-            if (window.ResortDB) {
-                const regRes = window.ResortDB.registerUser(newUser);
-                if (!regRes.success) {
-                    showStatus(regRes.message || "Registration failed.", "error");
-                    return;
-                }
-                window.ResortDB.saveSession(regRes.user, false);
-            } else {
-                saveUser(newUser);
-                localStorage.setItem("isLoggedIn", "true");
-                localStorage.setItem("userRole", "guest");
-                localStorage.setItem("guestEmail", email);
-                localStorage.setItem("guestName", fullName);
-                localStorage.setItem("guestPhone", phone);
-                localStorage.removeItem("adminEmail");
-                localStorage.removeItem("adminName");
-            }
-
-            showStatus("✓ Sanctuary Account Created Successfully! Logging you in...", "success");
-
-            // Disable button during transition
+            if (registering) return;
+            registering = true;
             const submitBtn = document.getElementById("submitRegisterBtn");
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.style.opacity = "0.7";
+            if (submitBtn) submitBtn.disabled = true;
+            try {
+                if (!window.SharedReservations) throw new Error("Shared registration is unavailable.");
+                const signedIn = await window.SharedReservations.register(email, password, fullName);
+                if (window.ResortDB) window.ResortDB.saveSession({ fullName, email, phone, role: signedIn.admin ? "admin" : "guest" }, false);
+                showStatus("Sanctuary account created successfully. Signing you in...", "success");
+                setTimeout(() => { window.location.href = "index.html"; }, 1200);
+            } catch (error) {
+                const code = /^auth\/[a-z0-9-]{1,80}$/.test(error?.code || "") ? error.code : "registration/unknown-error";
+                const hints = {
+                    "auth/operation-not-allowed": "Enable Email/Password in Firebase Authentication > Sign-in method for atherines-resort-reservations.",
+                    "auth/admin-restricted-operation": "Check whether end-user account creation is disabled in the reservations project's Authentication settings.",
+                    "auth/email-already-in-use": "This email already has an account. Please sign in.",
+                    "auth/weak-password": "Choose a password that meets the project's password policy.",
+                    "auth/password-does-not-meet-requirements": "Choose a password that meets the project's password policy.",
+                    "auth/invalid-email": "Check the email address and try again.",
+                    "auth/network-request-failed": "Check the connection or request blocking, then retry.",
+                    "auth/unauthorized-domain": "Check Authentication > Settings > Authorized domains for this host.",
+                    "auth/too-many-requests": "Firebase temporarily limited requests. Please wait before retrying.",
+                    "auth/invalid-api-key": "Check the reservations web app API key and its restrictions."
+                };
+                const context = { appName: "shared-reservations", projectId: window.SHARED_RESERVATIONS_CONFIG?.firebaseConfig?.projectId || "unavailable", mode: window.SHARED_RESERVATIONS_CONFIG?.mode || "unavailable" };
+                try { Object.assign(context, window.SharedReservations.registrationContext()); } catch { /* Configuration/SDK may be unavailable. */ }
+                const stages = ["initialize", "session-persistence", "create-account", "profile", "verify-session"];
+                // Intentionally log ONLY these fields, never error itself, input
+                // values, passwords, tokens, URLs, SDK customData or raw messages.
+                console.warn("Registration failed", {
+                    code, appName: context.appName, projectId: context.projectId, mode: context.mode,
+                    stage: stages.includes(error?.registrationStage) ? error.registrationStage : "unavailable"
+                });
+                const message = error?.accountCreated === true
+                    ? "Your Firebase account was created, but setup did not finish. Please sign in."
+                    : "Account creation failed. " + (hints[code] || "Please retry or contact the resort with this error code.");
+                showStatus(message + " (" + code + ")", "error");
+                registering = false;
+                if (submitBtn) submitBtn.disabled = false;
             }
 
-            setTimeout(() => {
-                window.location.href = "index.html";
-            }, 1200);
         });
     }
 
@@ -342,19 +321,33 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    if (termsLink) {
-        termsLink.addEventListener("click", (e) => {
-            e.preventDefault();
-            alert("Catherine's Bagasbas Lighthouse Resort - Terms of Service\n\n1. Membership is non-transferable.\n2. Member rates apply to direct bookings.\n3. Cancellation policies apply as outlined in reservation terms.");
+    // Native modal dialogs make the background inert. Explicit wrapping also
+    // keeps Tab/Shift+Tab inside the policy and returns focus to its own opener.
+    function setupPolicyDialog(link, id) {
+        const dialog = document.getElementById(id);
+        if (!link || !dialog) return;
+        let opener;
+        link.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            opener = link;
+            dialog.showModal();
+            dialog.querySelector("[data-close-policy]").focus();
+        });
+        dialog.querySelector("[data-close-policy]").addEventListener("click", () => dialog.close());
+        dialog.addEventListener("cancel", event => { event.preventDefault(); dialog.close(); });
+        dialog.addEventListener("close", () => opener?.focus());
+        dialog.addEventListener("keydown", event => {
+            if (event.key !== "Tab") return;
+            const targets = [...dialog.querySelectorAll('button:not([disabled]), [tabindex="0"]')];
+            const first = targets[0], last = targets[targets.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
         });
     }
+    setupPolicyDialog(termsLink, "termsPolicy");
+    setupPolicyDialog(privacyLink, "privacyPolicy");
 
-    if (privacyLink) {
-        privacyLink.addEventListener("click", (e) => {
-            e.preventDefault();
-            alert("Catherine's Bagasbas Lighthouse Resort - Privacy Policy\n\nYour personal information is securely stored and used solely for managing your resort stay, reservation preferences, and requested communications.");
-        });
-    }
 
 
     /* =====================================================

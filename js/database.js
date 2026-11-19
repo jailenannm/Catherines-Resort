@@ -290,6 +290,30 @@
         },
 
         /**
+         * Persist the reservation list to browser localStorage and verify
+         * the write. Does not fall back to in-memory storage: a failed
+         * round-trip means the booking was not saved.
+         */
+        _persistReservationsToBrowser(list) {
+            const val = JSON.stringify(list);
+            try {
+                if (typeof window !== "undefined" && window.localStorage) {
+                    window.localStorage.setItem(STORAGE_KEY_RESERVATIONS, val);
+                    if (window.localStorage.getItem(STORAGE_KEY_RESERVATIONS) === val) {
+                        return { success: true };
+                    }
+                }
+            } catch (e) {
+                console.warn("[ResortDB] Could not persist reservations to browser storage", e);
+            }
+            return {
+                success: false,
+                error: "STORAGE_UNAVAILABLE",
+                message: "Browser storage is unavailable. Your reservation was not saved. Please try again."
+            };
+        },
+
+        /**
          * Retrieve all user records from database
          */
         getAllUsers() {
@@ -574,11 +598,60 @@
                 return { success: false, error: "INVALID_DATA", message: "Reservation data is required." };
             }
 
-            const cleanRef = (reservationData.reference || ("CBLR-" + Math.floor(100000 + Math.random() * 900000))).replace(/^#/, "").trim().toUpperCase();
+            // Booking creation must fail closed on unreadable/corrupt storage.
+            // Other legacy readers may use seeds or memory, but never overwrite
+            // existing bookings with those fallbacks during submission.
+            let reservations;
+            try {
+                const stored = window.localStorage.getItem(STORAGE_KEY_RESERVATIONS);
+                reservations = stored ? JSON.parse(stored) : [];
+                if (!Array.isArray(reservations)) throw new Error("Invalid reservation history");
+            } catch (e) {
+                return {
+                    success: false,
+                    error: "STORAGE_UNAVAILABLE",
+                    message: "Browser storage is unavailable. Please try again. Your form details have been kept."
+                };
+            }
+            const takenRefs = new Set(
+                reservations
+                    .map(r => r && r.reference ? String(r.reference).replace(/^#/, "").trim().toUpperCase() : "")
+                    .filter(Boolean)
+            );
 
-            // Auto-assign available ESP32 diorama node (1-9)
-            const nodeNumber = Number(reservationData.nodeNumber) || (Math.floor(Math.random() * 9) + 1);
-            const rfidLinked = reservationData.rfidLinked || cleanRef.replace(/[^0-9]/g, "").slice(-4) || "8801";
+            let cleanRef = (reservationData.reference || "").replace(/^#/, "").trim().toUpperCase();
+            if (!cleanRef) {
+                for (let i = 0; i < 30; i++) {
+                    const candidate = ("CBLR-" + Math.floor(100000 + Math.random() * 900000)).toUpperCase();
+                    if (!takenRefs.has(candidate)) {
+                        cleanRef = candidate;
+                        break;
+                    }
+                }
+                if (!cleanRef) {
+                    return { success: false, error: "REFERENCE_COLLISION", message: "Could not allocate a reservation reference. Please try again." };
+                }
+            }
+
+            const existing = reservations.find(r =>
+                r && r.reference && String(r.reference).replace(/^#/, "").trim().toUpperCase() === cleanRef
+            );
+            if (existing) {
+                if (reservationData.submissionAttemptId &&
+                    existing.submissionAttemptId === reservationData.submissionAttemptId) {
+                    return {
+                        success: true,
+                        reused: true,
+                        reservation: existing,
+                        message: "Reservation already recorded locally."
+                    };
+                }
+                return {
+                    success: false,
+                    error: "REFERENCE_COLLISION",
+                    message: "That reservation reference is already in use. Please try again."
+                };
+            }
 
             const newReservation = {
                 reference: cleanRef,
@@ -595,37 +668,22 @@
                 specialRequests: (reservationData.specialRequests || "").trim(),
                 facilities: Array.isArray(reservationData.facilities) ? reservationData.facilities : [],
                 prices: reservationData.prices || { total: 0 },
-                status: reservationData.status || "Pending Verification",
+                status: "Pending Verification",
+                submissionAttemptId: reservationData.submissionAttemptId || "",
                 paymentMethod: reservationData.paymentMethod || "Pending Verification",
-                nodeNumber: nodeNumber,
-                rfidLinked: rfidLinked,
+                rfidLinked: "",
                 createdAt: reservationData.createdAt || new Date().toISOString()
             };
 
-            const reservations = this.getReservations();
-            // Prepend new reservation to appear at top of Master Reservations
             reservations.unshift(newReservation);
-            this._saveReservations(reservations);
-
-            // AUTO-UPDATE DIORAMA NAME:
-            // Send the new guest's name directly to the ESP32 so it is ready
-            // for the instant RFID tap bypass!
-            if (window.DioramaLink) {
-                window.DioramaLink.update("guest", {
-                    name: newReservation.guestName,
-                    reference: newReservation.reference,
-                    checkedIn: false
-                });
+            const persist = this._persistReservationsToBrowser(reservations);
+            if (!persist.success) {
+                return persist;
             }
 
-            // Update currentReservation for the active guest session
             safeSetItem(STORAGE_KEY_CURRENT_RES, JSON.stringify(newReservation));
+            safeSetItem("resort_reservation_sync", Date.now().toString());
 
-            // Broadcast real-time sync across other browser tabs/windows
-            const syncTimestamp = Date.now().toString();
-            safeSetItem("resort_reservation_sync", syncTimestamp);
-
-            // Broadcast in current window
             try {
                 if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("resort:reservation-added", {
@@ -634,11 +692,11 @@
                 }
             } catch (e) {}
 
-            console.log(`[ResortDB] Reservation added: #${cleanRef} for ${newReservation.guestName}`);
+            console.log(`[ResortDB] Reservation added locally: #${cleanRef} for ${newReservation.guestName}`);
             return {
                 success: true,
                 reservation: newReservation,
-                message: "Reservation successfully recorded and synchronized with Resort Command."
+                message: "Reservation successfully recorded locally."
             };
         },
 

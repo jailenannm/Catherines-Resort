@@ -12,10 +12,11 @@
      event/mode       read-only here
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
     const Shell = window.ControlShell;
-    const Link = window.DioramaLink;
+    if (await Shell.prepareFacility("pool")) return;
+    const Link = Shell.facilityLink();
 
     Shell.init("pool");
 

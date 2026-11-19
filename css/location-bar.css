@@ -1,0 +1,17 @@
+/* Public location information only: never a telemetry/connection indicator. */
+[data-location-bar], .guest-public-page [data-location-bar] {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  min-height:1.75rem;
+  padding:.35rem 4%;
+  gap:.25rem .75rem;
+  font-size:.75rem;
+  line-height:1.4;
+}
+[data-location-bar] > span, .status-bar[data-location-bar] > span {
+  display:inline;
+  min-width:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}

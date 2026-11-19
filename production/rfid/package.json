@@ -1,0 +1,12 @@
+{
+  "name": "catherines-rfid-checkin",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "catherines-reservations-emulator-tests": "file:../..",
+    "google-auth-library": "9.15.1"
+  }
+}

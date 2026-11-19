@@ -1,0 +1,30 @@
+'use strict';
+const assert=require('node:assert/strict'),{createHmac}=require('node:crypto'),fs=require('node:fs');
+const {createSignedRfidCheckIn,signedFields}=require('../scripts/signed-rfid-check-in.cjs');
+const {createFacilityCommandService}=require('../scripts/facility-command-service.cjs');
+(async()=>{
+ const now=1800000000000,key='test-only-reader-key-not-a-production-secret-0000',uid='0001A20F',reference='CBLR-910001';
+ let root={sharedReservations:{[reference]:{reference,ownerUid:'a',status:'Confirmed',rfidLinked:uid,facilities:[{value:'ktv'}]}},rfidAssignments:{[uid]:reference}},version=0;
+ const store={async read(){return{value:structuredClone(root),version}},async compareAndSet(expected,next){if(version!==expected)return false;root=next;version++;return true;}};
+ const receive=createSignedRfidCheckIn({readerKeys:{'fixture-reader':key},store,now:()=>now});
+ const event={eventId:'fixture-signed-scan-0001',readerId:'fixture-reader',uid,byteCount:4,observedAt:now};
+ const sign=p=>createHmac('sha256',key).update(signedFields(p)).digest('hex');
+ await assert.rejects(()=>receive(event,'0'.repeat(64)),/Unauthenticated/);
+ for(const extra of [{uid:'01A2F'},{byteCount:7},{observedAt:now-16000},{readerId:'browser'}]){const bad={...event,...extra};await assert.rejects(()=>receive(bad,sign(bad)),/Unauthenticated|stale/);}
+ const result=await Promise.all([receive(event,sign(event)),receive(event,sign(event))]);assert(result.every(r=>r.reference===reference));assert.equal(root.sharedReservations[reference].status,'Checked In');assert.equal(Object.keys(root.verifiedCheckins).length,1);assert.equal(await receive(event,sign(event)).then(r=>r.reused),true);assert(!root.diorama);
+ for(const [suffix,changes]of [['unknown',{uid:'000000FF'}],['pending',{}]]){root.sharedReservations[reference].status='Pending Verification';const bad={...event,eventId:'fixture-'+suffix+'-event-0001',...changes};await assert.rejects(()=>receive(bad,sign(bad)),/No Confirmed/);}root.sharedReservations[reference].status='Checked In';
+ root.sharedReservations[reference].status='Confirmed';const failedIngress=createSignedRfidCheckIn({readerKeys:{'fixture-reader':key},now:()=>now,store:{read:store.read,async compareAndSet(){throw Error('Forced save failure')}}});const failEvent={...event,eventId:'fixture-failed-scan-0001'};await assert.rejects(()=>failedIngress(failEvent,sign(failEvent)),/not confirmed/);assert.equal(root.sharedReservations[reference].status,'Confirmed');root.sharedReservations[reference].status='Checked In';
+ const savedDetails=structuredClone(root.sharedReservations[reference]);let telemetry={receivedAt:now,connected:true,esp2:'Online',hallOpen:true,audioOwner:'ktv'},dispatches=0;
+ const receipts=new Map(),transport={async submit(r){if(receipts.has(r.key)){assert.equal(receipts.get(r.key).fingerprint,r.fingerprint);return{accepted:true}}receipts.set(r.key,r);dispatches++;return{accepted:true}}};
+ const args={verifyIdToken:async token=>token==='admin'?{uid:'admin',admin:true}:token==='a'?{uid:'a'}:token==='b'?{uid:'b'}:null,readBooking:async ref=>structuredClone(root.sharedReservations[ref]),readTelemetry:async()=>telemetry,transport,integrations:{'ktv-rgb':true,'pool-pump':true},now:()=>now};
+ const service=createFacilityCommandService(args),request={token:'a',reference,action:'ktv-rgb',value:{r:true,g:false,b:false},requestId:'fixture-command-0001'};
+ const accepted=await Promise.all([service.request(request),service.request(request)]);assert.equal(dispatches,1);assert.deepEqual(accepted[0],{requestId:request.requestId,requestAccepted:true,deviceAcknowledged:false,physicalResultConfirmed:false});await service.request(request);assert.equal(dispatches,1);assert.equal(receipts.values().next().value.path,'ktv');assert.deepEqual(root.sharedReservations[reference],savedDetails);
+ for(const change of [{token:'b'},{token:''},{reference:'CBLR-999999'}])await assert.rejects(()=>service.request({...request,...change}),/denied|required/);
+ root.sharedReservations[reference].status='Confirmed';await assert.rejects(()=>service.request(request),/denied/);root.sharedReservations[reference].status='Checked In';root.sharedReservations[reference].facilities=[{value:'pool'}];await assert.rejects(()=>service.request(request),/denied/);root.sharedReservations[reference].facilities=[{value:'ktv'}];
+ for(const change of [{hallOpen:false},{receivedAt:now-4000},{audioOwner:'event'},{audioOwner:undefined}]){telemetry={receivedAt:now,connected:true,esp2:'Online',hallOpen:true,audioOwner:'ktv',...change};await assert.rejects(()=>service.readiness('a',reference),/readiness|audio/);}telemetry={receivedAt:now,connected:true,esp2:'Online',hallOpen:true,audioOwner:'ktv'};
+ root.sharedReservations[reference].facilities.push({value:'pool'});await assert.rejects(()=>service.request({...request,action:'pool-pump',value:true}),/administrator-only/);await service.request({...request,token:'admin',reference:undefined,action:'pool-pump',value:true,requestId:'fixture-admin-pump-001'});assert.equal([...receipts.values()][1].path,'pool/pump');
+ await assert.rejects(()=>createFacilityCommandService({...args,integrations:{}}).request(request),/unavailable/);
+ await assert.rejects(()=>createFacilityCommandService({...args,transport:{async submit(){throw Error('Forced write failure')}}}).request({...request,requestId:'fixture-failed-write-001'}),/Forced/);
+ const firmware=fs.readFileSync('esp32_firmware/ESP1_Mechanics/ESP1_Mechanics.ino','utf8'),nfc=firmware.slice(firmware.indexOf('void checkNFC() {'));assert(!/Firebase|openGatesSlowly|digitalWrite|displayLCD/.test(nfc));assert(firmware.slice(0,firmware.indexOf('void checkNFC() {')).includes('openGatesSlowly();'));
+ console.log('PASS: signed full-UID authentication/leading zeros/staleness/replay/concurrency/unknown/pending; server ownership/status/package/admin-only pump/Hall/audio arbitration/freshness/idempotency/failure/default-disabled; production NFC bypass absent and IR gate flow retained. Fake stores/transports only; no device commands.');
+})().catch(e=>{console.error(e);process.exitCode=1});

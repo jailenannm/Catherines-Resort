@@ -70,17 +70,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     /* =====================================================
-       HARD-CODED ADMIN CREDENTIALS
-    ===================================================== */
-
-    const ADMIN_EMAIL =
-        "admin@catherines.com";
-
-    const ADMIN_PASSWORD =
-        "Admin123!";
-
-
-    /* =====================================================
        HELPER FUNCTIONS
     ===================================================== */
 
@@ -183,11 +172,12 @@ document.addEventListener("DOMContentLoaded", () => {
        LOGIN FORM
     ===================================================== */
 
+    let signingIn = false;
     if (loginForm) {
 
         loginForm.addEventListener(
             "submit",
-            (event) => {
+            async (event) => {
 
                 event.preventDefault();
 
@@ -277,111 +267,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 const rememberMeInput = document.getElementById("rememberMe");
                 const isRemembered = rememberMeInput ? rememberMeInput.checked : false;
 
-                // Fallback authentication helper if ResortDB script was blocked
-                function authenticateFallback(em, pw) {
-                    if (em.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-                        return pw === ADMIN_PASSWORD
-                            ? { success: true, role: "admin", user: { fullName: "Catherine", email: ADMIN_EMAIL, role: "admin" } }
-                            : { success: false, error: "INVALID_PASSWORD", message: "Incorrect password for administrator account." };
-                    }
-                    let users = [];
-                    try {
-                        const stored = localStorage.getItem("resortUsers");
-                        if (stored) users = JSON.parse(stored);
-                    } catch (e) {}
-                    const found = users.find(u => u && u.email && u.email.toLowerCase() === em.toLowerCase());
-                    if (!found) {
-                        return {
-                            success: false,
-                            error: "USER_NOT_FOUND",
-                            message: "No registered account found with this email address. Please create an account first."
-                        };
-                    }
-                    if (found.password !== pw) {
-                        return {
-                            success: false,
-                            error: "INVALID_PASSWORD",
-                            message: "Incorrect password for this registered account."
-                        };
-                    }
-                    return { success: true, role: "guest", user: found };
-                }
-
-                const authResult = window.ResortDB
-                    ? window.ResortDB.authenticate(email, password)
-                    : authenticateFallback(email, password);
-
-                /* =============================================
-                   HANDLE FAILED AUTHENTICATION
-                   DO NOT LOG IN, DO NOT REDIRECT
-                ============================================= */
-                if (!authResult.success) {
-                    if (authResult.error === "USER_NOT_FOUND") {
-                        if (emailError) {
-                            emailError.textContent = "No account found with this email address.";
-                        }
-                        showStatus(
-                            "No registered account found with this email. <a href='register.html' class='status-register-link'>Create an account</a> to sign in.",
-                            "error"
-                        );
-                    } else if (authResult.error === "INVALID_PASSWORD") {
-                        if (passwordError) {
-                            passwordError.textContent = "Incorrect password. Please try again.";
-                        }
-                        showStatus(
-                            "Incorrect password for this account. Please try again or use 'Forgot password?'.",
-                            "error"
-                        );
-                    } else {
-                        showStatus(authResult.message || "Invalid email or password.", "error");
-                    }
-                    return;
-                }
-
-                /* =============================================
-                   AUTHENTICATION SUCCEEDED
-                ============================================= */
-                const user = authResult.user;
-
-                if (authResult.role === "admin") {
-                    showStatus("Signing you in as administrator...", "success");
-
-                    if (window.ResortDB) {
-                        window.ResortDB.saveSession(user, isRemembered);
-                    } else {
-                        localStorage.setItem("isLoggedIn", "true");
-                        localStorage.setItem("userRole", "admin");
-                        localStorage.setItem("adminEmail", ADMIN_EMAIL);
-                        localStorage.setItem("adminName", "Catherine");
-                        localStorage.removeItem("guestEmail");
-                        localStorage.removeItem("guestName");
-                    }
-
+                if (signingIn) return;
+                signingIn = true;
+                const submit = loginForm.querySelector('[type="submit"]');
+                if (submit) submit.disabled = true;
+                try {
+                    if (!window.SharedReservations) throw new Error("Shared sign-in is unavailable. Please retry.");
+                    const signedIn = await window.SharedReservations.signIn(email, password, isRemembered);
+                    const user = {
+                        email: signedIn.user.email,
+                        fullName: signedIn.user.displayName || "Guest",
+                        role: signedIn.admin ? "admin" : "guest"
+                    };
+                    // Navigation hints only. Shared access always uses Firebase Auth.
+                    if (window.ResortDB) window.ResortDB.saveSession(user, isRemembered);
+                    showStatus("Signed in successfully. Redirecting...", "success");
                     setTimeout(() => {
-                        window.location.href = "admin-dashboard.html";
+                        const requestedReturn = new URL(window.location.href).searchParams.get("next");
+                        const guestReturn = ["reservation.html", "my-reservation.html"].includes(requestedReturn) ? requestedReturn : "index.html";
+                        window.location.href = signedIn.admin ? "admin-dashboard.html" : guestReturn;
                     }, 500);
-
-                    return;
+                } catch (error) {
+                    showStatus("Sign-in failed. Check your Firebase account email and password, then retry.", "error");
+                    signingIn = false;
+                    if (submit) submit.disabled = false;
                 }
-
-                // Registered guest login
-                showStatus("Signing you in as " + (user.fullName || "Guest") + "...", "success");
-
-                if (window.ResortDB) {
-                    window.ResortDB.saveSession(user, isRemembered);
-                } else {
-                    localStorage.setItem("isLoggedIn", "true");
-                    localStorage.setItem("userRole", "guest");
-                    localStorage.setItem("guestEmail", user.email);
-                    localStorage.setItem("guestName", user.fullName || "Guest");
-                    if (user.phone) localStorage.setItem("guestPhone", user.phone);
-                    localStorage.removeItem("adminEmail");
-                    localStorage.removeItem("adminName");
-                }
-
-                setTimeout(() => {
-                    window.location.href = "index.html";
-                }, 500);
 
             }
         );
@@ -400,31 +310,6 @@ document.addEventListener("DOMContentLoaded", () => {
             rememberMeCheckbox.checked = true;
         }
     }
-
-    const currentLoggedIn = localStorage.getItem("isLoggedIn");
-    const currentSessionExpiry = localStorage.getItem("sessionExpiry");
-    if (currentLoggedIn === "true" && currentSessionExpiry) {
-        if (Date.now() > parseInt(currentSessionExpiry, 10)) {
-            if (window.ResortDB) {
-                window.ResortDB.clearSession();
-            } else {
-                localStorage.removeItem("isLoggedIn");
-                localStorage.removeItem("userRole");
-                localStorage.removeItem("guestEmail");
-                localStorage.removeItem("guestName");
-                localStorage.removeItem("sessionExpiry");
-                localStorage.removeItem("rememberMe");
-            }
-            showStatus("Your 30-day sanctuary session has expired. Please sign in again.");
-        }
-    }
-
-    // Clean up any stale or unregistered session from previous fallback bug
-    const currentGuestEmail = localStorage.getItem("guestEmail");
-    if (currentGuestEmail && window.ResortDB && !window.ResortDB.isEmailRegistered(currentGuestEmail)) {
-        window.ResortDB.clearSession();
-    }
-
 
     /* =====================================================
        EMAILJS CONFIGURATION FOR PASSWORD RESET
@@ -514,158 +399,15 @@ document.addEventListener("DOMContentLoaded", () => {
         forgotBackdrop.addEventListener("click", closeForgotModalHandler);
     }
 
-    // Step 1: Submit email to request code
-    if (forgotStep1Form) {
-        forgotStep1Form.addEventListener("submit", (e) => {
-            e.preventDefault();
-            if (resetEmailError) resetEmailError.textContent = "";
-
-            const emailVal = resetEmailInput ? resetEmailInput.value.trim() : "";
-            if (!emailVal || !isValidEmail(emailVal)) {
-                if (resetEmailError) resetEmailError.textContent = "Please enter a valid registered email address.";
-                return;
-            }
-
-            // Verify if email is actually registered in database
-            const isRegistered = window.ResortDB
-                ? window.ResortDB.isEmailRegistered(emailVal)
-                : Boolean(localStorage.getItem("resortUsers") && JSON.parse(localStorage.getItem("resortUsers")).some(u => u && u.email && u.email.toLowerCase() === emailVal.toLowerCase()));
-
-            if (!isRegistered) {
-                if (resetEmailError) {
-                    resetEmailError.textContent = "No registered account found with this email address. Please create an account first.";
-                }
-                return;
-            }
-
-            targetResetEmail = emailVal;
-            activeResetCode = "CAT-" + Math.floor(1000 + Math.random() * 9000);
-
-            const sendBtn = document.getElementById("sendResetCodeBtn");
-            const btnSpan = sendBtn ? sendBtn.querySelector("span") : null;
-            if (sendBtn && btnSpan) {
-                sendBtn.disabled = true;
-                btnSpan.textContent = "Sending Email...";
-            }
-
-            const proceedToStep2 = (messageHtml, isSuccess = true) => {
-                if (simulatedCodeBanner) {
-                    simulatedCodeBanner.style.background = isSuccess ? "#eafaf1" : "#fff2f2";
-                    simulatedCodeBanner.style.borderColor = isSuccess ? "#a2e8c2" : "#f8b4b4";
-                    simulatedCodeBanner.style.color = isSuccess ? "#17673b" : "#9b1c1c";
-                    simulatedCodeBanner.innerHTML = messageHtml;
-                }
-                if (sendBtn && btnSpan) {
-                    sendBtn.disabled = false;
-                    btnSpan.textContent = "Send Verification Code";
-                }
-                forgotStep1Form.style.display = "none";
-                forgotStep2Form.style.display = "block";
-                if (resetCodeInput) resetCodeInput.focus();
-            };
-
-            // Check if EmailJS is configured
-            const isEmailJSReady = typeof emailjs !== "undefined" &&
-                EMAILJS_CONFIG.SERVICE_ID &&
-                EMAILJS_CONFIG.SERVICE_ID !== "YOUR_SERVICE_ID" &&
-                EMAILJS_CONFIG.TEMPLATE_ID &&
-                EMAILJS_CONFIG.TEMPLATE_ID !== "YOUR_TEMPLATE_ID";
-
-            if (isEmailJSReady) {
-                const templateParams = {
-                    to_email: targetResetEmail,
-                    email: targetResetEmail,
-                    user_email: targetResetEmail,
-                    recipient_email: targetResetEmail,
-                    verification_code: activeResetCode,
-                    code: activeResetCode,
-                    pass_code: activeResetCode
-                };
-
-                const sendOptions = {
-                    publicKey: EMAILJS_CONFIG.PUBLIC_KEY
-                };
-
-                emailjs.send(
-                    EMAILJS_CONFIG.SERVICE_ID,
-                    EMAILJS_CONFIG.TEMPLATE_ID,
-                    templateParams,
-                    sendOptions
-                ).then((res) => {
-                    console.log("EmailJS Success Response:", res);
-                    proceedToStep2(`📧 Verification Code sent to <strong>${targetResetEmail}</strong>! Please check your email inbox (and spam folder).`, true);
-                }).catch((err) => {
-                    console.error("EmailJS Error Response:", err);
-                    const errMsg = (err && (err.text || err.message)) ? (err.text || err.message) : "Failed to connect to EmailJS server";
-                    proceedToStep2(`⚠️ EmailJS Error (${errMsg}). Demo Code for testing: <strong>${activeResetCode}</strong>`, false);
-                });
-            } else {
-                // Fallback demo mode when EmailJS credentials are not set
-                proceedToStep2(`🔑 Verification Code Sent to <strong>${targetResetEmail}</strong>! Code: <strong>${activeResetCode}</strong>`, false);
-            }
+    // The legacy reset-code flow changes local passwords only. Do not report
+    // shared-account recovery success through that unrelated account store.
+    for (const form of [forgotStep1Form, forgotStep2Form]) {
+        if (form) form.addEventListener("submit", event => {
+            event.preventDefault();
+            const target = form === forgotStep1Form ? resetEmailError : resetPasswordError;
+            if (target) target.textContent = "Shared-account password recovery is not available in this phase. Please contact the resort.";
         });
     }
-
-    // Step 2: Submit code & new password
-    if (forgotStep2Form) {
-        forgotStep2Form.addEventListener("submit", (e) => {
-            e.preventDefault();
-            if (resetPasswordError) resetPasswordError.textContent = "";
-
-            const codeVal = resetCodeInput ? resetCodeInput.value.trim().toUpperCase() : "";
-            const newPass = newPasswordInput ? newPasswordInput.value : "";
-            const confirmPass = confirmNewPasswordInput ? confirmNewPasswordInput.value : "";
-
-            if (!codeVal) {
-                if (resetPasswordError) resetPasswordError.textContent = "Please enter the verification code.";
-                return;
-            }
-
-            if (codeVal !== activeResetCode.toUpperCase()) {
-                if (resetPasswordError) resetPasswordError.textContent = `Invalid verification code. (Hint: Use ${activeResetCode})`;
-                return;
-            }
-
-            if (!newPass || newPass.length < 8) {
-                if (resetPasswordError) resetPasswordError.textContent = "New password must be at least 8 characters long.";
-                return;
-            }
-
-            if (newPass !== confirmPass) {
-                if (resetPasswordError) resetPasswordError.textContent = "Passwords do not match.";
-                return;
-            }
-
-            // Update user password in ResortDB
-            if (window.ResortDB) {
-                const updateRes = window.ResortDB.updatePassword(targetResetEmail, newPass);
-                if (!updateRes.success) {
-                    if (resetPasswordError) resetPasswordError.textContent = updateRes.message || "Failed to update password.";
-                    return;
-                }
-            } else {
-                try {
-                    const storedUsers = localStorage.getItem("resortUsers");
-                    let users = storedUsers ? JSON.parse(storedUsers) : [];
-                    const userIndex = users.findIndex(u => u && u.email && u.email.toLowerCase() === targetResetEmail.toLowerCase());
-                    if (userIndex !== -1) {
-                        users[userIndex].password = newPass;
-                        localStorage.setItem("resortUsers", JSON.stringify(users));
-                    }
-                } catch (err) {
-                    console.error("Error updating reset password in localStorage", err);
-                }
-            }
-
-            closeForgotModalHandler();
-
-            if (emailInput) emailInput.value = targetResetEmail;
-            if (passwordInput) passwordInput.value = newPass;
-
-            showStatus("✓ Password reset successfully! You can now sign in with your new password.", "success");
-        });
-    }
-
 
     /* =====================================================
        CREATE ACCOUNT
@@ -844,149 +586,11 @@ document.addEventListener("DOMContentLoaded", () => {
     ===================================================== */
 
     if (bookingForm) {
-
-        bookingForm.addEventListener(
-            "submit",
-            (event) => {
-
-                event.preventDefault();
-
-
-                const code =
-                    bookingCode
-                        ? bookingCode.value
-                            .trim()
-                            .toUpperCase()
-                        : "";
-
-
-                if (bookingError) {
-
-                    bookingError.textContent =
-                        "";
-
-                }
-
-
-                /* =============================================
-                   EMPTY BOOKING CODE
-                ============================================= */
-
-                if (!code) {
-
-                    if (bookingError) {
-
-                        bookingError.textContent =
-                            "Please enter your booking code.";
-
-                    }
-
-                    return;
-
-                }
-
-
-                /* =============================================
-                   QUICK GUEST ACCESS VERIFICATION
-                ============================================= */
-
-                const cleanCode = code.replace(/^#/, "").trim();
-
-                // 1. Check reservationHistory in localStorage
-                let history = [];
-                try {
-                    const stored = localStorage.getItem("reservationHistory");
-                    if (stored) history = JSON.parse(stored);
-                } catch (e) {
-                    console.error("Error loading reservationHistory for quick access", e);
-                }
-
-                // 2. Check currentReservation in localStorage
-                let currRes = null;
-                try {
-                    const savedCurr = localStorage.getItem("currentReservation");
-                    if (savedCurr) currRes = JSON.parse(savedCurr);
-                } catch (e) {}
-
-                let match = history.find(r => 
-                    r.reference && 
-                    (r.reference.toUpperCase() === cleanCode || 
-                     r.reference.replace(/[^A-Z0-9]/gi, "").toUpperCase() === cleanCode.replace(/[^A-Z0-9]/gi, "").toUpperCase())
-                );
-
-                if (!match && currRes && currRes.reference) {
-                    if (currRes.reference.toUpperCase() === cleanCode || 
-                        currRes.reference.replace(/[^A-Z0-9]/gi, "").toUpperCase() === cleanCode.replace(/[^A-Z0-9]/gi, "").toUpperCase()) {
-                        match = currRes;
-                    }
-                }
-
-                if (match) {
-                    // Authenticate Guest Session from matching reservation
-                    localStorage.setItem("isLoggedIn", "true");
-                    localStorage.setItem("userRole", "guest");
-                    localStorage.setItem("guestEmail", match.email || "guest@catherineslighthouse.ph");
-                    localStorage.setItem("guestName", match.guestName || "Guest");
-                    if (match.mobile) localStorage.setItem("guestMobile", match.mobile);
-                    localStorage.setItem("currentReservation", JSON.stringify(match));
-
-                    if (bookingError) {
-                        bookingError.style.color = "#2e7d32";
-                        bookingError.textContent = `✓ Reservation #${match.reference} verified! Signing you in as ${match.guestName}...`;
-                    }
-
-                    setTimeout(() => {
-                        closeBookingModalHandler();
-                        window.location.href = "my-reservation.html";
-                    }, 600);
-                    return;
-                }
-
-                // 3. Fallback for demo booking codes (e.g. CAT-2026-001, CBLR-xxxxxx)
-                if (cleanCode.startsWith("CAT") || cleanCode.startsWith("CBLR") || cleanCode.length >= 6) {
-                    const demoReservation = {
-                        reference: cleanCode,
-                        guestName: "Guest Member",
-                        email: "guest@catherineslighthouse.ph",
-                        checkinDate: new Date().toISOString().split("T")[0],
-                        duration: "2 Nights",
-                        totalGuests: 2,
-                        status: "Confirmed",
-                        facilities: [
-                            { name: "Private Seaside Cottage", price: 4500 },
-                            { name: "Swimming Pool & Arched Bridge", price: 1200 }
-                        ],
-                        prices: { total: 6156 }
-                    };
-
-                    localStorage.setItem("isLoggedIn", "true");
-                    localStorage.setItem("userRole", "guest");
-                    localStorage.setItem("guestEmail", demoReservation.email);
-                    localStorage.setItem("guestName", demoReservation.guestName);
-                    localStorage.setItem("currentReservation", JSON.stringify(demoReservation));
-
-                    if (bookingError) {
-                        bookingError.style.color = "#2e7d32";
-                        bookingError.textContent = `✓ Quick Access Granted for #${cleanCode}! Redirecting...`;
-                    }
-
-                    setTimeout(() => {
-                        closeBookingModalHandler();
-                        window.location.href = "guest-dashboard.html";
-                    }, 600);
-                    return;
-                }
-
-                if (bookingError) {
-                    bookingError.style.color = "#d32f2f";
-                    bookingError.textContent = "No active reservation found matching this booking code. Please verify your reference code.";
-                }
-
-            }
-        );
-
+        bookingForm.addEventListener("submit", event => {
+            event.preventDefault();
+            if (bookingError) bookingError.textContent = "A booking reference does not sign you in. Please use your account email and password above.";
+        });
     }
-
 
     /* =====================================================
        INITIALIZATION

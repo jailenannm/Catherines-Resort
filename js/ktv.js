@@ -15,10 +15,11 @@
      beacon/on, beacon/rpm
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
     const Shell = window.ControlShell;
-    const Link = window.DioramaLink;
+    if (await Shell.prepareFacility("ktv")) return;
+    const Link = Shell.facilityLink();
     const SONGS = window.KTV_SONGS || [];
 
     Shell.init("ktv");
@@ -59,6 +60,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let ktv = Link.get("ktv") || {};
     let beacon = Link.get("beacon") || {};
+
+    // The old TFT status writes are not a working audio player or beacon motor.
+    // Retain supported admin door/RGB diagnostics, but deny these unsupported
+    // actions even when triggered programmatically. Local guest karaoke is separate.
+    const unavailable = '#playButton,#stopButton,#prevButton,#nextButton,#volumeRange,#songList,#beaconSwitch,#beaconSpeed,[data-mode="pulse"]';
+    for (const type of ['click','input','change']) document.addEventListener(type, event => {
+        if (event.target.closest(unavailable)) { event.preventDefault(); event.stopImmediatePropagation(); }
+    }, true);
 
     /* -----------------------------------------------------
        SONG LIST
@@ -191,46 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderLyrics() {
-        const song = currentSong();
-        if (!song) return;
-
-        const open = Boolean(ktv.hallOpen);
-        const state = ktv.playback || "stopped";
-
-        if (!open) {
-            el.lyrics.innerHTML = `<div class="idle">${ktv.target === "open" ? "Opening… waiting for the Hall sensor to confirm." : "Open the KTV to turn on the lyrics monitor."}</div>`;
-            el.progress.style.width = "0%";
-            return;
-        }
-
-        const t = elapsed();
-        const duration = song.duration || (song.lines[song.lines.length - 1].t + 5);
-
-        if (state === "playing" && t >= duration) {
-            Link.update("ktv", { playback: "stopped", position: 0, startedAt: 0 });
-            return;
-        }
-
-        let idx = -1;
-        song.lines.forEach((line, i) => { if (line.t <= t) idx = i; });
-
-        if (state === "stopped") {
-            el.lyrics.innerHTML = `
-                <div class="song-title">Ready · Track ${song.track}</div>
-                <div class="line current">${Shell.escapeHtml(song.title)}</div>
-                <div class="idle">${Shell.escapeHtml(song.artist)} — press play to start</div>`;
-            el.progress.style.width = "0%";
-            return;
-        }
-
-        const show = [idx - 1, idx, idx + 1].map(i => {
-            const line = song.lines[i];
-            if (!line) return `<div class="line">&nbsp;</div>`;
-            return `<div class="line ${i === idx ? "current" : ""}">${Shell.escapeHtml(line.text)}</div>`;
-        }).join("");
-
-        el.lyrics.innerHTML = `<div class="song-title">${Shell.escapeHtml(song.title)}${state === "paused" ? " · Paused" : ""}</div>${show}`;
-        el.progress.style.width = `${Math.min(100, (t / duration) * 100)}%`;
+        el.lyrics.textContent = 'Physical audio/TFT karaoke lyrics unavailable. Use the local guest preview with approved media.';
     }
 
     function render() {
@@ -253,7 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
         el.play.innerHTML = state === "playing" ? `<i class="fa-solid fa-pause"></i>` : `<i class="fa-solid fa-play"></i>`;
 
         [el.play, el.stop, el.prev, el.next].forEach(b => { b.disabled = !open; });
-        el.hint.textContent = open ? "" : "Playback unlocks when the Hall sensor confirms the KTV panel is fully open.";
+        el.hint.textContent = 'Physical audio is unavailable. Hall readiness alone does not establish a working audio route; use the separate local guest preview with approved media.';
 
         if (document.activeElement !== el.volume) {
             el.volume.value = ktv.volume ?? 18;
@@ -276,9 +246,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         el.lighthouse.classList.toggle("beacon-off", !beacon.on);
         el.beaconSwitch.classList.toggle("on", Boolean(beacon.on));
-        el.beaconLabel.textContent = beacon.on ? `Sweeping at ${beacon.rpm || 6} RPM` : "Off";
+        el.beaconLabel.textContent = 'Stationary light — physical main switch; no web control';
         el.beam.style.setProperty("--sweep", `${60 / Math.max(1, beacon.rpm || 6)}s`);
         el.beaconSpeed.querySelectorAll("button").forEach(b => b.classList.toggle("active", Number(b.dataset.rpm) === Number(beacon.rpm)));
+
+        document.querySelectorAll(unavailable).forEach(node => {
+            if (node.matches('button,input')) node.disabled = true;
+            node.querySelectorAll('button,input').forEach(control => control.disabled = true);
+        });
+        el.playChip.textContent = 'Unavailable';
+        el.beam.style.animation = 'none';
 
         renderLyrics();
     }

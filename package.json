@@ -1,0 +1,32 @@
+{
+  "name": "catherines-reservations-emulator-tests",
+  "private": true,
+  "scripts": {
+    "demo:lan": "node scripts/start-lan-demo.cjs",
+    "emulators": "firebase emulators:start --only auth,database --project demo-catherines-reservations --config firebase.emulators.json",
+    "test:phase2a2": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node tests/phase2a2.test.cjs\"",
+    "serve:test": "node tests/serve.cjs",
+    "serve:cloud-test": "node tests/serve.cjs --cloud",
+    "test:cloud-preparation": "node tests/cloud-preparation.test.cjs",
+    "test:phase2b1": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node tests/phase2b1.test.cjs\"",
+    "test:phase2c2": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node tests/phase2c2.test.cjs\"",
+    "test:phase2c1": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node tests/phase2c1.test.cjs\"",
+    "test:phase2b2": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node tests/phase2b2.test.cjs\"",
+    "test:public-guest": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node tests/public-guest-regression.cjs\"",
+    "test:master-reservations": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node tests/public-guest-regression.cjs master-reservations phase2b1 phase2b2 phase2a2\"",
+    "preview:guest-dashboard": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node scripts/preview-guest-dashboard.cjs\"",
+    "test:guest-dashboard": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.emulators.json \"node tests/public-guest-regression.cjs guest-dashboard-simple phase2c2 my-reservation-page\"",
+    "test:guest-facilities": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.facility-tests.json \"node --require ./tests/isolated-facility-ports.cjs tests/public-guest-regression.cjs guest-facilities phase2c2 guest-dashboard-simple\"",
+    "test:admin-devices": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.facility-tests.json \"node --require ./tests/isolated-facility-ports.cjs tests/public-guest-regression.cjs admin-devices guest-facilities phase2c2\"",
+    "test:admin-checkout": "node scripts/build-emulator-rules.cjs && firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.facility-tests.json \"node --require ./tests/isolated-facility-ports.cjs tests/admin-checkout-isolated.cjs\"",
+    "test:checkout": "node scripts/build-emulator-rules.cjs && firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.facility-tests.json \"node --require ./tests/isolated-facility-ports.cjs tests/public-guest-regression.cjs checkout\"",
+    "test:admin-workflow": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.facility-tests.json \"node --require ./tests/isolated-facility-ports.cjs tests/public-guest-regression.cjs admin-workflow admin-devices master-reservations guest-facilities\"",
+    "test:facilities-v2": "node tests/facilities-v2.test.cjs && node tests/facilities-v2-ui.test.cjs && node tests/facilities-media.test.cjs",
+    "preview:facilities-v2": "firebase emulators:exec --only auth,database --project demo-catherines-reservations --config firebase.facility-tests.json \"node --require ./tests/isolated-facility-ports.cjs scripts/preview-facilities-v2.cjs\""
+  },
+  "devDependencies": {
+    "firebase": "12.6.0",
+    "firebase-tools": "14.26.0",
+    "playwright": "1.56.1"
+  }
+}

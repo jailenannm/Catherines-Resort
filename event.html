@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Place | Catherine's Bagasbas Lighthouse Resort</title>
-    <meta name="description" content="Control the Event Place mode, lighting, and sound at Catherine's Bagasbas Lighthouse Resort.">
+    <meta name="description" content="Reservation-based facility preview. Guest controls are read-only; live states require verification.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -102,9 +102,12 @@
             transition: height 0.1s;
         }
     </style>
+<style>.facility-loading { display:none; } body.facility-pending .facility-loading { display:block; margin:2rem; font:1rem/1.5 Arial,sans-serif; } body.facility-pending .cs-main, body.facility-pending #controlSidebar { visibility: hidden; }</style>
+<link rel="stylesheet" href="css/facilities-v2.css">
 </head>
 
-<body>
+<body class="facility-pending">
+<p class="facility-loading" role="status">Loading your booking…</p>
 
     <div id="controlSidebar"></div>
 
@@ -207,12 +210,16 @@
         </div>
     </main>
 
-    <script src="js/database.js"></script>
-    <script src="js/firebase-config.js"></script>
-    <script src="js/diorama-link.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-database-compat.js"></script>
+    <script src="js/shared-reservations-config.js"></script>
+    <script src="js/shared-reservations.js"></script>
+    <script src="js/guest-access.js"></script>
     <script src="js/control-shell.js"></script>
     <script src="js/event.js"></script>
 
+<script src="js/facilities-v2.js"></script>
 </body>
 
 </html>

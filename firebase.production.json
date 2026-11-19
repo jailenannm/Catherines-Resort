@@ -1,0 +1,17 @@
+{
+  "database": {
+    "rules": "shared-reservations.rules.json"
+  },
+  "hosting": {
+    "site": "atherines-resort-reservations",
+    "public": ".local/hosting-rfid",
+    "ignore": ["**/.*", "**/node_modules/**"],
+    "redirects": [
+      { "source": "/admin-dashboard.html", "destination": "/admin-reservations.html", "type": 302 }
+    ],
+    "headers": [
+      { "source": "**/*.js", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
+      { "source": "**/*.html", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+    ]
+  }
+}

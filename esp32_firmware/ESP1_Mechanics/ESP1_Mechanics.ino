@@ -383,30 +383,18 @@ void readSensorsAndSync() {
 
 void checkNFC() {
   if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
-    String uidString = "";
+    // Reader diagnostics only until authenticated scan ingress is provisioned.
+    // Never open a gate, welcome/check in a guest, or publish an access flag here.
+    Serial.print("UID bytes: ");
+    Serial.println(rfid.uid.size);
+    Serial.print("UID: ");
+    const char* hex = "0123456789ABCDEF";
     for (byte i = 0; i < rfid.uid.size; i++) {
-      uidString += String(rfid.uid.uidByte[i], HEX);
+      Serial.print(hex[rfid.uid.uidByte[i] >> 4]);
+      Serial.print(hex[rfid.uid.uidByte[i] & 0x0F]);
     }
-    uidString.toUpperCase();
-    
-    // Tell Firebase the card was scanned
-    Firebase.RTDB.setString(&fbdo, "/diorama/nfc/lastUid", uidString);
-    Firebase.RTDB.setInt(&fbdo, "/diorama/nfc/lastScan", millis()); 
-    
-    // INSTANT BYPASS: Don't wait for web app! 
-    // Show Welcome Message immediately with whatever name is loaded in memory
-    displayLCD("WELCOME!", lastGuestName != "" ? lastGuestName : "VIP Guest");
-    lcdMessageClearTime = millis() + 5000;
-    
-    // Instantly Open Gate!
-    Firebase.RTDB.setString(&fbdo, "/diorama/gate/target", "open");
-    gateOpen = true;
-    openGatesSlowly();
-    
-    // Tell Firebase they are checked in!
-    Firebase.RTDB.setBool(&fbdo, "/diorama/guest/checkedIn", true);
-    
+    Serial.println();
     rfid.PICC_HaltA();
-    delay(1000); 
+    rfid.PCD_StopCrypto1();
   }
 }

@@ -14,115 +14,38 @@
     <meta name="description" content="Explore Catherine’s Bagasbas Lighthouse Resort in Daet, Camarines Norte.">
 
     <!-- GOOGLE FONTS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap"
-      rel="stylesheet">
 
     <!-- CSS -->
     <link rel="stylesheet" href="css/index.css">
 
     <!-- JAVASCRIPT -->
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-auth-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-database-compat.js" defer></script>
+    <script src="js/shared-reservations-config.js" defer></script>
+    <script src="js/shared-reservations.js" defer></script>
+    <script src="js/public-header.js" defer></script>
     <script src="js/index.js" defer></script>
 
-</head>
+    <link rel="stylesheet" href="css/public-header.css">
+<link rel="stylesheet" href="css/location-bar.css"><link rel="stylesheet" href="css/footer.css"><script src="js/footer.js" defer></script></head>
 
 
-<body>
+<body class="guest-public-page">
 
 
   <!-- =========================================================
        TOP STATUS BAR
   ========================================================== -->
 
-  <div class="status-bar">
-
-    <span>
-      ● &nbsp;Daet, Camarines Norte • Philippine Coastal Shore
-    </span>
-
-    <span>
-      Bagasbas Beachfront &nbsp; · &nbsp; Coastal Retreat
-    </span>
-
-  </div>
+  <div class="status-bar" data-location-bar><span>Bagasbas, Daet, Camarines Norte</span></div>
 
 
   <!-- =========================================================
        NAVIGATION
   ========================================================== -->
 
-  <header class="site-header" id="top">
-
-    <!-- BRAND / LOGO -->
-    <a href="index.html" class="brand" aria-label="Catherine’s homepage">
-
-      <img src="assets/Catherine's Logo.png" alt="" onerror="this.style.display='none'">
-
-      <span>
-
-        <strong>
-          Catherine’s
-        </strong>
-
-        <small>
-          BAGASBAS LIGHTHOUSE RESORT
-        </small>
-
-      </span>
-
-    </a>
-
-
-    <!-- MOBILE MENU BUTTON -->
-    <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">
-      ☰
-    </button>
-
-
-    <!-- NAVIGATION LINKS -->
-    <nav class="nav" id="mainNav" aria-label="Main navigation">
-
-      <a class="active" href="#home">
-        Home
-      </a>
-
-      <a href="#about">
-        About
-      </a>
-
-      <a href="#facilities">
-        Facilities
-      </a>
-
-      <a href="#reservation">
-        Reservation
-      </a>
-
-      <a href="#contact">
-        Contact
-      </a>
-
-    </nav>
-
-
-    <!-- NAVIGATION ACTIONS -->
-    <div class="nav-actions">
-
-      <a class="btn btn-gold" data-book href="login.html">
-        Book Now
-      </a>
-
-      <a class="profile-link" id="profileLink" href="guest-dashboard.html" aria-label="Guest dashboard" hidden>
-        ♙
-      </a>
-
-    </div>
-
-  </header>
+  <header data-public-header id="top"><a href="index.html">Catherine’s</a></header>
 
 
   <!-- =========================================================
@@ -173,7 +96,7 @@
 
           <div class="button-row">
 
-            <a class="btn btn-gold" data-book href="login.html">
+            <a class="btn btn-gold" data-book href="reservation.html">
               MAKE A RESERVATION ↗
             </a>
 
@@ -188,30 +111,10 @@
           <!-- HERO STATISTICS -->
           <div class="hero-stats">
 
-            <span>
-
-              <strong>
-                4
-              </strong>
-
-              <small>
-                PRIVATE COTTAGES
-              </small>
-
-            </span>
 
 
-            <span>
 
-              <strong>
-                300
-              </strong>
 
-              <small>
-                GUEST PAVILION
-              </small>
-
-            </span>
 
 
             <span>
@@ -234,7 +137,7 @@
         <!-- HERO IMAGE -->
         <div class="hero-photo">
 
-          <img src="assets/hero-lighthouse.jpg" alt="Lighthouse and coastal resort at twilight">
+          <img src="assets/catherines-lighthouse-twilight.png" alt="Catherine’s lighthouse illuminated at twilight.">
 
 
           <!-- FLOATING CARD -->
@@ -319,15 +222,15 @@
 
             <select id="duration">
 
-              <option value="Full 22-Hour Coastal Retreat">
+              <option value="coastal-22h">
                 Full 22-Hour Coastal Retreat
               </option>
 
-              <option value="Day Pass">
+              <option value="day-retreat">
                 Day Pass
               </option>
 
-              <option value="Night Pass">
+              <option value="evening-sanctuary">
                 Night Pass
               </option>
 
@@ -398,13 +301,51 @@
 
           <!-- CHECK BUTTON -->
           <button class="btn btn-gold" type="submit">
-            ⌕ &nbsp; CHECK
+            Check Availability
           </button>
 
         </div>
 
       </form>
 
+    </section>
+
+
+    <!-- =======================================================
+         PHILOSOPHY / ABOUT
+    ======================================================== -->
+
+    <section class="philosophy" id="about" aria-labelledby="aboutTitle">
+      <div class="section philosophy-grid">
+        <div class="philosophy-copy" data-about-reveal="copy">
+          <p class="eyebrow">About the Resort</p>
+          <h2 id="aboutTitle">More Than a Stay: A Bagasbas Beacon of Comfort</h2>
+          <p>Catherine’s Bagasbas Lighthouse Resort is located along Bagasbas Road in Daet, Camarines Norte, near Bagasbas Beach. Guests can find it on Waze under the name Bagasbas Lighthouse Hotel Resort.</p>
+          <p>A local resort directory lists guest accommodations, a swimming pool, a restaurant, and a function hall. If you’re planning a stay or a group gathering, contact the resort to confirm current availability and arrangements.</p>
+          <div class="about-project">
+            <h3>About Our Diorama Project</h3>
+            <p>This website is part of our student-built IoT diorama project inspired by Catherine’s Bagasbas Lighthouse Resort. The project models the guest journey from online reservation and admin approval to RFID check-in and access to booked facilities. The Celebration Event Package in the project brings together the Event Place, Swimming Pool, and Stage Band.</p>
+          </div>
+          <div class="button-row">
+            <a data-book class="btn btn-gold" href="reservation.html">Reserve Your Visit</a>
+            <a class="btn btn-soft" href="#experiences">Explore Experiences</a>
+          </div>
+        </div>
+        <a class="about-map-preview" data-about-reveal="location" href="https://maps.app.goo.gl/AmsRnhztLGCHeAPL8" target="_blank" rel="noopener noreferrer" aria-label="Open in Google Maps — Catherine’s Bagasbas Lighthouse Resort (opens in a new tab)" aria-describedby="aboutMapCaption">
+          <svg viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true" focusable="false">
+            <rect width="400" height="400" fill="#f5eadb"/>
+            <path d="M310 0h90v400h-64c-39-62 19-100-12-166S350 83 310 0Z" fill="#cbdedb"/>
+            <path d="M26 35h100v75H26zM179 17h89v85h-89zM18 200h98v89H18zM177 244h104v66H177z" fill="#dce3d0"/>
+            <path d="M-20 148c125-44 175 52 340-20M144-20c-47 153 23 229-9 440M-20 331c118-49 205 36 337-21" stroke="#fffaf5" stroke-width="25"/>
+            <path d="M-20 148c125-44 175 52 340-20M144-20c-47 153 23 229-9 440" stroke="#ddc49c" stroke-width="3"/>
+            <path d="M235 141c-27 0-49 21-49 48 0 36 49 79 49 79s49-43 49-79c0-27-22-48-49-48Z" fill="#966a18"/>
+            <circle cx="235" cy="188" r="17" fill="#fffaf5"/>
+            <path d="M235 177v22m-6-16h12" stroke="#966a18" stroke-width="3"/>
+          </svg>
+          <span class="about-map-caption" id="aboutMapCaption">Map illustration</span>
+          <span class="about-map-label">Open in Google Maps <span aria-hidden="true">↗</span></span>
+        </a>
+      </div>
     </section>
 
 
@@ -453,7 +394,7 @@
 
           <div class="facility-image">
 
-            <img src="assets/cottage.jpg" alt="Private coastal cottage">
+            <img src="assets/cottage.png" alt="Private coastal cottage">
 
             <span class="image-label">
               COTTAGE HAVEN 01–04
@@ -485,7 +426,7 @@
                 ✦ Comfort &nbsp; ☼ Coastal Retreat
               </small>
 
-              <a data-book class="btn btn-soft" href="login.html">
+              <a data-book class="btn btn-soft" href="reservation.html">
                 Reserve Cottage
               </a>
 
@@ -501,7 +442,7 @@
 
           <div class="facility-image">
 
-            <img src="assets/pool.jpg" alt="Swimming pool and arched bridge">
+            <img src="assets/pool.png" alt="Swimming pool and arched bridge">
 
             <span class="image-label">
               SIGNATURE AQUATIC CENTER
@@ -532,7 +473,7 @@
                 ☼ Poolside &nbsp; ✦ Relaxation
               </small>
 
-              <a data-book class="btn btn-soft" href="login.html">
+              <a data-book class="btn btn-soft" href="reservation.html">
                 Book Pass
               </a>
 
@@ -548,7 +489,7 @@
 
           <div class="facility-image">
 
-            <img src="assets/pavilion.jpg" alt="Resort celebration pavilion">
+            <img src="assets/pavilion.png" alt="Resort celebration pavilion">
 
             <span class="image-label">
               EVENTS &amp; CELEBRATIONS
@@ -579,7 +520,7 @@
                 ✧ Events &nbsp; ♡ Gatherings
               </small>
 
-              <a data-book class="btn btn-soft" href="login.html">
+              <a data-book class="btn btn-soft" href="reservation.html">
                 Inquire Venue
               </a>
 
@@ -595,7 +536,7 @@
 
           <div class="facility-image">
 
-            <img src="assets/ktv.jpg" alt="Lighthouse karaoke lounge">
+            <img src="assets/ktv.png" alt="Lighthouse karaoke lounge">
 
             <span class="image-label">
               LIGHTHOUSE LOUNGE
@@ -627,7 +568,7 @@
                 ♫ Music &nbsp; ✦ Entertainment
               </small>
 
-              <a data-book class="btn btn-soft" href="login.html">
+              <a data-book class="btn btn-soft" href="reservation.html">
                 Reserve KTV Room
               </a>
 
@@ -673,7 +614,7 @@
           </ul>
 
 
-          <a data-book class="btn btn-gold" href="login.html">
+          <a data-book class="btn btn-gold" href="reservation.html">
             RESERVE FULL PROPERTY ↗
           </a>
 
@@ -684,130 +625,7 @@
     </section>
 
 
-    <!-- =======================================================
-         PHILOSOPHY / ABOUT
-    ======================================================== -->
 
-    <section class="philosophy" id="about">
-
-      <div class="section philosophy-grid">
-
-
-        <!-- IMAGES -->
-        <div class="philosophy-images">
-
-          <img class="philosophy-main" src="assets/about-lighthouse.jpg" alt="Lighthouse beside the sea at sunset">
-
-          <img class="philosophy-inset" src="assets/about-interior.jpg" alt="Warm coastal cottage interior">
-
-        </div>
-
-
-        <!-- TEXT -->
-        <div class="philosophy-copy">
-
-          <p class="eyebrow">
-            OUR PHILOSOPHY
-          </p>
-
-          <h2>
-            More Than a Stay: A Bagasbas Beacon of Comfort
-          </h2>
-
-          <p class="lead">
-            Rooted on the shores of Daet, Camarines Norte,
-            Catherine’s Bagasbas Lighthouse Resort brings
-            together coastal charm, memorable gatherings,
-            and contemporary comfort.
-          </p>
-
-          <p>
-            From early-morning beach visits to twilight
-            family celebrations, our spaces are designed
-            to make every moment feel special. Discover a
-            welcoming coastal retreat and an experience
-            worth sharing.
-          </p>
-
-
-          <!-- FACTS -->
-          <div class="fact-grid">
-
-            <div>
-
-              <strong>
-                4
-              </strong>
-
-              <small>
-                PRIVATE<br>
-                COTTAGES
-              </small>
-
-            </div>
-
-
-            <div>
-
-              <strong>
-                300
-              </strong>
-
-              <small>
-                GUEST<br>
-                PAVILION
-              </small>
-
-            </div>
-
-
-            <div>
-
-              <strong>
-                1
-              </strong>
-
-              <small>
-                ICONIC<br>
-                LIGHTHOUSE
-              </small>
-
-            </div>
-
-
-            <div>
-
-              <strong>
-                ∞
-              </strong>
-
-              <small>
-                COASTAL<br>
-                MEMORIES
-              </small>
-
-            </div>
-
-          </div>
-
-
-          <div class="button-row">
-
-            <a data-book class="btn btn-gold" href="login.html">
-              Reserve Your Visit
-            </a>
-
-            <a class="btn btn-soft" href="#experiences">
-              Explore Experiences ↓
-            </a>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
 
 
     <!-- =======================================================
@@ -857,7 +675,7 @@
             own coastal retreat.
           </p>
 
-          <a data-book href="login.html">
+          <a data-book href="reservation.html">
             Book Cottage ›
           </a>
 
@@ -911,7 +729,7 @@
             occasions beside the coast.
           </p>
 
-          <a data-book href="login.html">
+          <a data-book href="reservation.html">
             Plan Event ›
           </a>
 
@@ -938,7 +756,7 @@
             and memorable evenings.
           </p>
 
-          <a data-book href="login.html">
+          <a data-book href="reservation.html">
             Reserve Lounge ›
           </a>
 
@@ -1009,17 +827,17 @@
         <!-- GALLERY -->
         <div class="gallery-grid">
 
-          <img data-category="grounds" src="assets/gallery-grounds.jpg" alt="Resort grounds">
+          <img data-category="grounds" src="assets/gallery-grounds.png" alt="Resort grounds">
 
-          <img data-category="cottages" src="assets/gallery-cottage.jpg" alt="Cottage bedroom">
+          <img data-category="cottages" src="assets/gallery-cottage.png" alt="Cottage bedroom">
 
-          <img data-category="grounds" src="assets/gallery-lighthouse.jpg" alt="Lighthouse at night">
+          <img data-category="grounds" src="assets/gallery-lighthouse.png" alt="Lighthouse at night">
 
-          <img data-category="pavilion" src="assets/gallery-pavilion.jpg" alt="Celebration pavilion">
+          <img data-category="pavilion" src="assets/gallery-pavilion.png" alt="Celebration pavilion">
 
-          <img data-category="ktv" src="assets/gallery-ktv.jpg" alt="KTV suite">
+          <img data-category="ktv" src="assets/gallery-ktv.png" alt="KTV suite">
 
-          <img data-category="pool" src="assets/gallery-pool.jpg" alt="Pool and bridge at night">
+          <img data-category="pool" src="assets/gallery-pool.png" alt="Pool and bridge at night">
 
         </div>
 
@@ -1053,13 +871,13 @@
 
         <div class="button-row">
 
-          <a data-book class="btn btn-gold" href="login.html">
+          <a data-book class="btn btn-gold" href="reservation.html">
             MAKE A RESERVATION →
           </a>
 
 
-          <a class="btn btn-glass" href="guest-dashboard.html" id="trackBooking">
-            TRACK EXISTING BOOKING
+          <a class="btn btn-glass" href="my-reservation.html" id="trackBooking">
+            VIEW MY RESERVATION
           </a>
 
         </div>
@@ -1075,126 +893,7 @@
        FOOTER
   ========================================================== -->
 
-  <footer id="contact">
-
-
-    <div class="section footer-grid">
-
-
-      <!-- BRAND -->
-      <div>
-
-        <a href="index.html" class="footer-brand">
-          Catherine’s
-        </a>
-
-        <p>
-          A welcoming coastal resort in Bagasbas,
-          Daet, Camarines Norte.
-        </p>
-
-        <small>
-          DAET • CAMARINES NORTE • PHILIPPINES
-        </small>
-
-      </div>
-
-
-      <!-- FACILITIES -->
-      <div>
-
-        <h3>
-          Sanctuary Quarters
-        </h3>
-
-        <a href="#facilities">
-          All Resort Facilities
-        </a>
-
-        <a href="#facilities">
-          Seaside Cottages
-        </a>
-
-        <a href="#facilities">
-          Swimming Pool &amp; Bridge
-        </a>
-
-        <a href="#facilities">
-          Celebration Event Place
-        </a>
-
-      </div>
-
-
-      <!-- GUEST -->
-      <div>
-
-        <h3>
-          Guest Experience
-        </h3>
-
-        <a data-book href="login.html">
-          Make a Reservation
-        </a>
-
-        <a href="#reservation">
-          Plan Your Visit
-        </a>
-
-        <a href="guest-dashboard.html" id="footerDashboard">
-          Guest Dashboard
-        </a>
-
-        <a href="#diorama">
-          Diorama Preview
-        </a>
-
-      </div>
-
-
-      <!-- CONTACT -->
-      <div>
-
-        <h3>
-          Bagasbas Concierge
-        </h3>
-
-        <p>
-          Bagasbas Beach Road,
-          Daet, Camarines Norte,
-          Philippines
-        </p>
-
-        <p>
-          Contact details: add the resort’s
-          verified phone number and email here.
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <!-- FOOTER BOTTOM -->
-    <div class="footer-bottom">
-
-      <span>
-
-        ©
-        <span id="year"></span>
-        Catherine’s Bagasbas Lighthouse Resort.
-        All rights reserved.
-
-      </span>
-
-
-      <a href="#top">
-        Back to top ↑
-      </a>
-
-    </div>
-
-  </footer>
+  <div id="footer-container"></div>
 
 
 </body>

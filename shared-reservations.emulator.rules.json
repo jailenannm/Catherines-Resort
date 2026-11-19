@@ -1,0 +1,114 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "sharedReservations": {
+      ".indexOn": [
+        "ownerUid"
+      ],
+      ".read": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && (auth.token.admin === true || (query.orderByChild === 'ownerUid' && query.equalTo === auth.uid))",
+      "$reference": {
+        ".read": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && (auth.token.admin === true || !data.exists() || data.child('ownerUid').val() === auth.uid)",
+        ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password' && !data.exists() && newData.exists() && newData.child('ownerUid').val() === auth.uid",
+        ".validate": "newData.hasChildren([\"reference\",\"ownerUid\",\"submissionAttemptId\",\"checkinDate\",\"duration\",\"adults\",\"children\",\"senior\",\"totalGuests\",\"honorific\",\"guestName\",\"mobile\",\"email\",\"specialRequests\",\"facilities\",\"prices\",\"createdAt\",\"status\",\"rfidLinked\"]) && newData.child('totalGuests').val() === newData.child('adults').val() + newData.child('children').val() + newData.child('senior').val() && (data.exists() || !((newData.child('facilities/0/value').val() === 'event' || newData.child('facilities/1/value').val() === 'event' || newData.child('facilities/2/value').val() === 'event' || newData.child('facilities/3/value').val() === 'event' || newData.child('facilities/4/value').val() === 'event') && (newData.child('facilities/0/value').val() === 'pool' || newData.child('facilities/1/value').val() === 'pool' || newData.child('facilities/2/value').val() === 'pool' || newData.child('facilities/3/value').val() === 'pool' || newData.child('facilities/4/value').val() === 'pool'))) && (data.exists() || ((newData.child('staySlotId').val() === 'coastal-22h' && newData.child('duration').val() === '22-Hour Coastal Haven (2:00 PM – 12:00 PM next day)') || (newData.child('staySlotId').val() === 'day-retreat' && newData.child('duration').val() === 'Day Retreat (8:00 AM – 6:00 PM)') || (newData.child('staySlotId').val() === 'evening-sanctuary' && newData.child('duration').val() === 'Evening Sanctuary (4:00 PM – 12:00 AM)')))",
+        "reference": {
+          ".validate": "newData.isString() && newData.val() === $reference && newData.val().matches(/^CBLR-[0-9]{6}$/)"
+        },
+        "ownerUid": {
+          ".validate": "newData.isString() && ((!data.exists() && newData.val() === auth.uid) || (data.exists() && newData.val() === data.val()))"
+        },
+        "submissionAttemptId": {
+          ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{16,80}$/)"
+        },
+        "status": {
+          ".write": "(auth != null && auth.token.admin === true && auth.token.firebase.sign_in_provider != 'anonymous' && data.val() === 'Pending Verification' && newData.val() === 'Confirmed' && data.parent().child('rfidLinked').val() === '') || (auth != null && auth.token.aud === 'demo-catherines-reservations' && auth.token.firebase.sign_in_provider === 'password' && data.parent().child('ownerUid').val() === auth.uid && data.val() === 'Checked In' && newData.val() === 'Checking Out')",
+          ".validate": "((!data.exists() && newData.val() === 'Pending Verification') || (data.val() === 'Pending Verification' && newData.val() === 'Confirmed' && auth != null && auth.token.admin === true) || (data.exists() && newData.val() === data.val())) || (auth != null && auth.token.aud === 'demo-catherines-reservations' && auth.token.firebase.sign_in_provider === 'password' && data.parent().child('ownerUid').val() === auth.uid && data.val() === 'Checked In' && newData.val() === 'Checking Out')"
+        },
+        "rfidLinked": {
+          ".write": "auth != null && auth.token.admin === true && auth.token.firebase.sign_in_provider != 'anonymous' && data.exists() && data.val() === '' && data.parent().child('status').val() === 'Confirmed' && newData.isString() && newData.val().matches(/^([0-9A-F]{8}|[0-9A-F]{14}|[0-9A-F]{20})$/) && !root.child('rfidAssignments').child(newData.val()).exists()",
+          ".validate": "(newData.val() === '' && (!data.exists() || data.val() === '')) || (data.exists() && newData.isString() && newData.val().matches(/^([0-9A-F]{8}|[0-9A-F]{14}|[0-9A-F]{20})$/) && (data.val() === '' || data.val() === newData.val()) && newData.parent().parent().parent().child('rfidAssignments').child(newData.val()).val() === $reference)"
+        },
+        "facilities": {
+          ".validate": "newData.hasChildren(['0']) && (!newData.child('1').exists() || newData.child('0').exists()) && (!newData.child('2').exists() || newData.child('1').exists()) && (!newData.child('3').exists() || newData.child('2').exists()) && (!newData.child('4').exists() || newData.child('3').exists())",
+          "$index": {
+            ".validate": "$index.matches(/^[0-4]$/) && newData.hasChildren(['name','value','price']) && (data.exists() || newData.child('value').val() !== 'event' || newData.child('packageVersion').val() === 2)",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+            },
+            "value": {
+              ".validate": "newData.val() === 'cottage' || newData.val() === 'pool' || newData.val() === 'ktv' || newData.val() === 'event' || newData.val() === 'buyout'"
+            },
+            "price": {
+              ".validate": "newData.isNumber() && ((newData.parent().child('value').val() === 'cottage' && newData.val() === 4500) || (newData.parent().child('value').val() === 'pool' && newData.val() === 1200) || (newData.parent().child('value').val() === 'ktv' && newData.val() === 2200) || (newData.parent().child('value').val() === 'event' && newData.val() === 15000) || (newData.parent().child('value').val() === 'buyout' && newData.val() === 35000))"
+            },
+            "$other": {
+              ".validate": false
+            },
+            "packageVersion": {
+              ".validate": "newData.isNumber() && newData.val() === 2 && newData.parent().child('value').val() === 'event'"
+            }
+          }
+        },
+        "prices": {
+          ".validate": "newData.hasChildren(['subtotal','tourismTax','serviceCharge','total']) && newData.child('tourismTax').val() === 250 && newData.child('serviceCharge').val() === newData.child('subtotal').val() * 0.08 && newData.child('total').val() === newData.child('subtotal').val() + 250 + newData.child('serviceCharge').val() && newData.child('subtotal').val() === newData.parent().child('facilities/0/price').val() + (newData.parent().child('facilities/1/price').exists() ? newData.parent().child('facilities/1/price').val() : 0) + (newData.parent().child('facilities/2/price').exists() ? newData.parent().child('facilities/2/price').val() : 0) + (newData.parent().child('facilities/3/price').exists() ? newData.parent().child('facilities/3/price').val() : 0) + (newData.parent().child('facilities/4/price').exists() ? newData.parent().child('facilities/4/price').val() : 0)",
+          "$amount": {
+            ".validate": "($amount === 'subtotal' || $amount === 'tourismTax' || $amount === 'serviceCharge' || $amount === 'total') && newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+          }
+        },
+        "$other": {
+          ".validate": false
+        },
+        "adults": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 10000"
+        },
+        "children": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000"
+        },
+        "senior": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000"
+        },
+        "totalGuests": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 10000"
+        },
+        "checkinDate": {
+          ".validate": "newData.isString() && newData.val().length >= 10 && newData.val().length <= 10"
+        },
+        "duration": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+        },
+        "honorific": {
+          ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 30"
+        },
+        "guestName": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+        },
+        "mobile": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 254"
+        },
+        "specialRequests": {
+          ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 5000"
+        },
+        "createdAt": {
+          ".validate": "newData.isString() && newData.val().length >= 20 && newData.val().length <= 30"
+        },
+        "staySlotId": {
+          ".validate": "newData.isString() && (newData.val() === 'coastal-22h' || newData.val() === 'day-retreat' || newData.val() === 'evening-sanctuary')"
+        }
+      }
+    },
+    "verifiedCheckins": {
+      ".read": false,
+      ".write": false
+    },
+    "rfidAssignments": {
+      ".read": "auth != null && auth.token.admin === true && auth.token.firebase.sign_in_provider != 'anonymous'",
+      "$uid": {
+        ".write": "auth != null && auth.token.admin === true && auth.token.firebase.sign_in_provider != 'anonymous' && !data.exists() && newData.isString() && root.child('sharedReservations').child(newData.val()).child('status').val() === 'Confirmed' && root.child('sharedReservations').child(newData.val()).child('rfidLinked').val() === ''",
+        ".validate": "$uid.matches(/^([0-9A-F]{8}|[0-9A-F]{14}|[0-9A-F]{20})$/) && newData.isString() && newData.val().matches(/^CBLR-[0-9]{6}$/) && newData.parent().parent().child('sharedReservations').child(newData.val()).child('rfidLinked').val() === $uid"
+      }
+    }
+  }
+}

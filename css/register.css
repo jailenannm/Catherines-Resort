@@ -8,9 +8,19 @@
 
 .name-phone-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: 16px;
 }
+
+/* Fields continue to inherit the exact Sign In rules from login.css. */
+.register-page .field-group, .register-page .input-wrap { min-width:0; }
+.register-page .input-icon { display:flex; align-items:center; justify-content:center; width:1.125rem; }
+.register-page .input-icon svg { width:1.125rem; height:1.125rem; }
+.register-page .password-toggle { display:grid; place-items:center; width:2.75rem; height:2.75rem; right:.25rem; cursor:pointer; }
+.register-page .password-toggle svg, .register-page .arrow svg, .register-page .modal-close svg { width:1.125rem; height:1.125rem; }
+.register-page .password-toggle .eye-slash { display:none; }
+.register-page .password-toggle.is-visible .eye-slash { display:block; }
+.register-page .password-toggle:focus-visible { outline:3px solid var(--gold-dark); outline-offset:2px; border-radius:.375rem; }
 
 @media (max-width: 600px) {
   .name-phone-row {
@@ -126,9 +136,16 @@
 }
 
 .checkbox-row input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+  position: static;
+  opacity: 1;
+  pointer-events: auto;
+  appearance: auto;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 1.125rem;
+  margin: 0.0625rem 0 0;
+  accent-color: var(--gold);
+  cursor: pointer;
 }
 
 .checkbox-row .custom-checkbox {
@@ -171,3 +188,39 @@
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Native registration controls: do not inherit the login-only hidden checkbox. */
+.checkbox-row label { cursor: pointer; }
+.checkbox-row input:focus-visible,
+.checkbox-row a:focus-visible,
+.policy-dialog :focus-visible {
+  outline: 0.1875rem solid var(--gold-dark, #8d621a);
+  outline-offset: 0.1875rem;
+}
+.checkbox-row input[aria-invalid="true"] { outline: 0.125rem solid var(--danger); }
+.consent-error { font-size: 0.8125rem; line-height: 1.5; }
+.consent-error:empty { display: none; }
+.consent-error:not(:empty) { margin-top: -0.25rem; }
+
+/* Reuse the registration modal-card, button, fonts and palette. */
+.policy-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(34rem, calc(100% - 2rem));
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  padding: clamp(1.25rem, 5vw, 2.375rem);
+  border: 1px solid #ded2c2;
+  color: var(--text, #211d18);
+}
+.policy-dialog[open] { display: flex; flex-direction: column; gap: 1rem; }
+.policy-dialog:not([open]) { display: none; }
+.policy-dialog::backdrop { background: rgba(4, 35, 40, 0.58); backdrop-filter: blur(5px); }
+.policy-dialog h2 { font-family: var(--serif); font-size: 2rem; line-height: 1.15; }
+.policy-dialog .policy-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; font-size: 1rem; line-height: 1.65; }
+.policy-dialog .policy-body p { font-size: 1rem; line-height: 1.65; margin: 0 0 0.75rem; }
+.policy-dialog .policy-body ol { padding-left: 1.5rem; }
+.policy-dialog .policy-body li + li { margin-top: 0.5rem; }
+.policy-dialog > button { flex-shrink: 0; margin: 0; }
+body:has(.policy-dialog[open]) { overflow: hidden; }

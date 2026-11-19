@@ -1,0 +1,38 @@
+﻿/* Loaded only after a non-administrator identity is established. */
+html:has(.guest-facility-page) { font-size:100%; }
+.guest-facility-page { margin:0; background:#fbf4ea; color:#392f26; font-family:'DM Sans',Arial,sans-serif; font-size:1rem; line-height:1.5; }
+.guest-facility-page [hidden] { display:none !important; }
+.guest-facility-page #controlSidebar { width:100%; position:sticky; top:0; z-index:1000; }
+.guest-facility-page .cs-main { width:92%; max-width:76rem; min-height:0; margin:2rem auto; padding:0 0 2rem; }
+.guest-facility-page #pageContent.cs-grid { display:block; min-width:0; }
+.guest-facility-page .guest-facility-heading,.guest-facility-page .guest-facility-card { min-width:0; padding:1.5rem; margin-bottom:1.25rem; border:1px solid #eadbc5; border-radius:1.25rem; background:#fff9f0; }
+.guest-facility-page .guest-facility-heading h1 { font-family:'Playfair Display',Georgia,serif; font-size:clamp(1.75rem,4vw,2.5rem); line-height:1.2; margin:.5rem 0 1.25rem; }
+.guest-facility-page .guest-facility-heading.has-facility-photo { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:center; gap:1.25rem; }
+.guest-facility-page .guest-facility-heading-details { min-width:0; }
+.guest-facility-page .guest-facility-header-photo { display:block; width:100%; height:auto; aspect-ratio:16 / 9; object-fit:cover; border-radius:.75rem; }
+.guest-facility-page .public-image-fallback.guest-facility-header-photo { min-height:0; padding:.75rem; }
+.guest-facility-page h2 { font-family:'Playfair Display',Georgia,serif; font-size:1.5rem; line-height:1.2; margin:.75rem 0 1rem; }
+.guest-facility-page p,.guest-facility-page dd { font-size:1rem; line-height:1.5; overflow-wrap:anywhere; margin:1rem 0; }
+.guest-facility-page .guest-eyebrow,.guest-facility-page .guest-preview-label,.guest-facility-page dt { font-size:.875rem; line-height:1.5; color:#74695d; }
+.guest-facility-page .guest-status { display:inline-block; border-radius:1rem; padding:.375rem .75rem; font-size:.875rem; background:#f2d99f; color:#725016; }
+.guest-facility-page .guest-return-links,.guest-facility-page #guestFacilityNav { display:flex; flex-wrap:wrap; gap:.75rem 1.25rem; margin-bottom:1.25rem; }
+.guest-facility-page .guest-return-links a { color:#966a18; font-size:1rem; }
+.guest-facility-page #guestFacilityNav a,.guest-facility-page .guest-facility-button { display:inline-flex; align-items:center; min-height:2.75rem; padding:.75rem 1rem; background:#c99a45; color:#392f26; border:1px solid #966a18; border-radius:.625rem; font-size:.875rem; line-height:1.5; text-decoration:none; }
+.guest-facility-page #guestFacilityNav a[aria-current] { box-shadow:inset 0 0 0 2px #80570c; }
+.guest-facility-page .cs-locked { width:100%; max-width:none; grid-column:1 / -1; text-align:left; }
+.guest-facility-page .cs-locked p { color:#74695d; margin-bottom:1.5rem; }
+.guest-facility-page .guest-device-states { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin:1.5rem 0; }
+.guest-facility-page .guest-device-states > div { padding:1rem; border:1px solid #eadbc5; border-radius:.75rem; min-width:0; }
+.guest-facility-page .guest-device-states dd { margin:.375rem 0 0; }
+.guest-facility-page :focus-visible { outline:3px solid #966a18; outline-offset:3px; }
+@media(max-width:40rem) { .guest-facility-page .guest-device-states { grid-template-columns:minmax(0,1fr); } .guest-facility-page .guest-facility-card,.guest-facility-page .guest-facility-heading { padding:1.25rem; } }
+@media(max-width:40rem) { .guest-facility-page .guest-facility-heading.has-facility-photo { grid-template-columns:minmax(0,1fr); gap:.75rem; } }
+/* Browser karaoke preview only; no physical mixer/volume controls. */
+.karaoke-preview label { display:grid; gap:.5rem; }
+.karaoke-preview input { width:100%; padding:.75rem; font:inherit; }
+.karaoke-preview ul { list-style:none; padding:0; display:grid; gap:.5rem; }
+.karaoke-preview button { font:inherit; padding:.625rem 1rem; min-height:2.75rem; border:1px solid #eadbc5; border-radius:.5rem; background:#c99a45; color:#392f26; cursor:pointer; }
+.karaoke-preview button:disabled { opacity:.6; cursor:not-allowed; }
+.karaoke-preview :focus-visible { outline:3px solid #966a18; outline-offset:3px; }
+.karaoke-actions { display:flex; flex-wrap:wrap; gap:.75rem; }
+#karaokeLyrics { min-height:3rem; padding:1rem; background:#f5eadb; border-radius:.5rem; font-size:1.125rem; overflow-wrap:anywhere; }

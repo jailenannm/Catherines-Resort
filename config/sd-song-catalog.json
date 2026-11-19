@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "indexing": "unverified",
+  "tracks": [
+    {
+      "id": 1,
+      "title": "Welcome",
+      "artist": null,
+      "category": "welcome",
+      "file": "0001.mp3",
+      "folder": null,
+      "durationMs": null,
+      "lyrics": null,
+      "offsetMs": 0,
+      "verified": false
+    },
+    {
+      "id": 2,
+      "title": "Upuan",
+      "artist": null,
+      "category": "ktv",
+      "file": "0002.mp3",
+      "folder": null,
+      "durationMs": null,
+      "lyrics": null,
+      "offsetMs": 0,
+      "verified": false
+    },
+    {
+      "id": 3,
+      "title": "Thank You",
+      "artist": null,
+      "category": "checkout",
+      "file": "0003.mp3",
+      "folder": null,
+      "durationMs": null,
+      "lyrics": null,
+      "offsetMs": 0,
+      "verified": false
+    },
+    {
+      "id": 4,
+      "title": null,
+      "artist": null,
+      "category": "ktv",
+      "file": "0004.mp3",
+      "folder": null,
+      "durationMs": null,
+      "lyrics": null,
+      "offsetMs": 0,
+      "verified": false
+    }
+  ]
+}

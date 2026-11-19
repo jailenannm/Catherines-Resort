@@ -5,187 +5,7 @@
    LOGIN STATE
 ========================================================= */
 
-const isLoggedIn = () => {
-  const logged = localStorage.getItem('isLoggedIn') === 'true';
-  const sessionExpiry = localStorage.getItem('sessionExpiry');
-
-  if (logged && sessionExpiry) {
-    if (Date.now() > parseInt(sessionExpiry, 10)) {
-      localStorage.removeItem('isLoggedIn');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('guestEmail');
-      localStorage.removeItem('guestName');
-      localStorage.removeItem('sessionExpiry');
-      localStorage.removeItem('rememberMe');
-      return false;
-    }
-  }
-
-  // Verify that logged-in guest email is registered
-  if (logged) {
-    const role = localStorage.getItem('userRole');
-    if (role === 'guest') {
-      const email = localStorage.getItem('guestEmail');
-      if (email) {
-        try {
-          const rawUsers = localStorage.getItem('resortUsers');
-          if (rawUsers) {
-            const users = JSON.parse(rawUsers);
-            const exists = Array.isArray(users) && users.some(
-              u => u && u.email && u.email.toLowerCase() === email.toLowerCase()
-            );
-            if (!exists) {
-              localStorage.removeItem('isLoggedIn');
-              localStorage.removeItem('userRole');
-              localStorage.removeItem('guestEmail');
-              localStorage.removeItem('guestName');
-              localStorage.removeItem('sessionExpiry');
-              localStorage.removeItem('rememberMe');
-              return false;
-            }
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  return logged;
-};
-
-
-/* =========================================================
-   BOOKING DESTINATION
-========================================================= */
-
-const destination = () => {
-
-  return isLoggedIn()
-    ? 'reservation.html'
-    : 'login.html';
-
-};
-
-
-/* =========================================================
-   PROFILE ICON
-========================================================= */
-
-const profile =
-  document.getElementById('profileLink');
-
-
-profile.hidden =
-  !isLoggedIn();
-
-
-/* =========================================================
-   BOOK NOW LINKS
-========================================================= */
-
-document
-  .querySelectorAll('[data-book]')
-  .forEach(link => {
-
-    link.href =
-      destination();
-
-  });
-
-
-/* =========================================================
-   LOGIN-AWARE LINKS
-========================================================= */
-
-[
-  'dioramaPortal',
-  'trackBooking',
-  'footerDashboard'
-]
-.forEach(id => {
-
-  const link =
-    document.getElementById(id);
-
-
-  if (
-    link &&
-    !isLoggedIn()
-  ) {
-
-    link.href =
-      'login.html';
-
-  }
-
-});
-
-
-/* =========================================================
-   MOBILE NAVIGATION
-========================================================= */
-
-const menuToggle =
-  document.getElementById('menuToggle');
-
-
-const nav =
-  document.getElementById('mainNav');
-
-
-menuToggle.addEventListener(
-  'click',
-  () => {
-
-    const open =
-      nav.classList.toggle('open');
-
-
-    menuToggle.setAttribute(
-      'aria-expanded',
-      String(open)
-    );
-
-
-    menuToggle.textContent =
-      open
-        ? '✕'
-        : '☰';
-
-  }
-);
-
-
-/* =========================================================
-   CLOSE MOBILE MENU AFTER CLICK
-========================================================= */
-
-nav
-  .querySelectorAll('a')
-  .forEach(link => {
-
-    link.addEventListener(
-      'click',
-      () => {
-
-        nav.classList.remove(
-          'open'
-        );
-
-
-        menuToggle.setAttribute(
-          'aria-expanded',
-          'false'
-        );
-
-
-        menuToggle.textContent =
-          '☰';
-
-      }
-    );
-
-  });
-
+const destination = () => 'reservation.html';
 
 /* =========================================================
    RESERVATION DATE
@@ -289,10 +109,7 @@ const filters =
   );
 
 
-const galleryImages =
-  document.querySelectorAll(
-    '[data-category]'
-  );
+
 
 
 filters.forEach(
@@ -315,7 +132,7 @@ filters.forEach(
         );
 
 
-        galleryImages.forEach(
+        document.querySelectorAll('[data-category]').forEach(
           img => {
 
             img.hidden =
@@ -336,7 +153,38 @@ filters.forEach(
    CURRENT YEAR
 ========================================================= */
 
-document.getElementById(
-  'year'
-).textContent =
-  new Date().getFullYear();
+const footerYear = document.getElementById('year');
+if (footerYear) footerYear.textContent = new Date().getFullYear();
+
+"use strict";
+// Progressive enhancement: content is visible in CSS/HTML, even without this script.
+(function () {
+    const section = document.getElementById('about');
+    if (!section || !('IntersectionObserver' in window) || !Element.prototype.animate) return;
+    const motion = matchMedia('(prefers-reduced-motion: reduce)');
+    if (motion.matches) return;
+    const running = new Set();
+    const observer = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            observer.unobserve(entry.target); // Once per page load, including cancelled animations.
+            if (motion.matches || entry.target.contains(document.activeElement)) continue;
+            const copy = entry.target.dataset.aboutReveal === 'copy';
+            try {
+                const animation = entry.target.animate(copy
+                    ? [{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'translateY(0)'}]
+                    : [{opacity:0},{opacity:1}],
+                    {duration:copy ? 320 : 300,delay:copy ? 0 : 120,easing:'ease-out',fill:'backwards'});
+                running.add(animation);
+                animation.finished.catch(()=>{}).finally(()=>running.delete(animation));
+            } catch { /* No hidden class or inline style can strand the content. */ }
+        }
+    }, {threshold:0.12});
+    section.querySelectorAll('[data-about-reveal]').forEach(element=>observer.observe(element));
+    motion.addEventListener('change',event=>{
+        if (!event.matches) return;
+        observer.disconnect();
+        running.forEach(animation=>animation.cancel());
+        running.clear();
+    });
+})();

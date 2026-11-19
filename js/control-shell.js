@@ -24,21 +24,24 @@
     const ADMIN_NAV = [
         { href: "admin-dashboard.html", icon: "fa-solid fa-sliders", label: "Operational Center" },
         { href: "admin-reservations.html", icon: "fa-regular fa-calendar-days", label: "Master Reservations" },
-        { href: "manual-override.html", icon: "fa-solid fa-gamepad", label: "Manual Override", page: "manual-override" },
+        { href: "diorama-control.html", icon: "fa-solid fa-gamepad", label: "Diorama Overrides", page: "manual-override" },
         { href: "check-in.html", icon: "fa-solid fa-id-card", label: "Check-in Desk", page: "check-in" },
         { href: "cottage.html", icon: "fa-solid fa-house-chimney", label: "Cottages", page: "cottage" },
         { href: "pool.html", icon: "fa-solid fa-water-ladder", label: "Pool & Bridge", page: "pool" },
         { href: "event.html", icon: "fa-solid fa-champagne-glasses", label: "Event Place", page: "event" },
         { href: "ktv.html", icon: "fa-solid fa-microphone-lines", label: "Lighthouse KTV", page: "ktv" },
         { href: "checkout.html", icon: "fa-solid fa-door-open", label: "Check-out Desk", page: "checkout" },
-        { href: "sensors.html", icon: "fa-solid fa-satellite-dish", label: "Sensors Telemetry" }
+        { href: "admin-dashboard.html#sensors", icon: "fa-solid fa-satellite-dish", label: "Sensors" }
     ];
 
     /* -----------------------------------------------------
        SESSION & RESERVATION HELPERS
     ----------------------------------------------------- */
 
+    let facilityAdmin = false;
     function role() {
+        if (window.GuestAccess && facilityAdmin) return "admin";
+        if (window.GuestAccess) return window.GuestAccess.state.user ? (window.GuestAccess.state.admin ? "admin" : "guest") : null;
         if (localStorage.getItem("isLoggedIn") !== "true") return null;
         return localStorage.getItem("userRole") === "admin" ? "admin" : "guest";
     }
@@ -48,6 +51,7 @@
     }
 
     function currentReservation() {
+        if (window.GuestAccess) return window.GuestAccess.state.reservation;
         let res = null;
         try {
             res = JSON.parse(localStorage.getItem("currentReservation") || "null");
@@ -66,6 +70,7 @@
     }
 
     function hasFacility(res, kind) {
+        if (window.GuestAccess) return window.GuestAccess.includes(res, kind);
         const names = facilityNames(res);
         if (names.some(n => n.includes("buyout"))) return true;
         const match = {
@@ -92,7 +97,7 @@
     function isCheckedIn(res) {
         if (!res) return false;
         const st = String(res.status || "").toLowerCase();
-        return st.includes("checked in") || st.includes("in facility") || st === "active";
+        return st === "checked in";
     }
 
     /*
@@ -101,6 +106,10 @@
          Guest  -> must be checked in AND have reserved the facility.
     */
     function accessFor(kind) {
+        if (window.GuestAccess) {
+            if (facilityAdmin) return { allowed: true, admin: true };
+            return window.GuestAccess.accessFor(kind);
+        }
         if (isAdmin()) return { allowed: true, admin: true };
 
         const r = role();
@@ -194,8 +203,11 @@
 
         const logout = document.getElementById("csLogout");
         if (logout) {
-            logout.addEventListener("click", () => {
+            logout.addEventListener("click", async () => {
                 if (!window.confirm("Are you sure you want to log out?")) return;
+                if (window.GuestAccess) {
+                    try { await window.SharedReservations.signOut(); } catch { toast("Could not sign out. Please retry."); return; }
+                }
                 if (window.ResortDB) window.ResortDB.clearSession();
                 localStorage.removeItem("currentReservation");
                 window.location.href = "index.html";
@@ -261,6 +273,11 @@
     }
 
     function renderLocked(container, access) {
+        if (document.body.classList.contains("guest-facility-page")) {
+            const page = guestCloudTest() ? "my-reservation.html" : "guest-dashboard.html";
+            container.innerHTML = '<section class="guest-facility-card cs-locked"><h2>Facility access is locked</h2><p>'+escapeHtml(access.reason)+'</p><a class="guest-facility-button" href="'+guestBookingUrl(page)+'">'+(guestCloudTest()?"Back to My Reservation":"Back to Guest Dashboard")+'</a></section>';
+            return;
+        }
         const actions = {
             login: `<a class="cs-btn primary" href="login.html" id="lockedLogin"><i class="fa-solid fa-right-to-bracket"></i> Sign in</a>`,
             reserve: `<a class="cs-btn primary" href="reservation.html" id="lockedReserve"><i class="fa-regular fa-calendar-plus"></i> Make a reservation</a>`,
@@ -293,7 +310,153 @@
         }
     }
 
+    // Guest pages have no device connector and never register the legacy device
+    // handlers. Administrators retain the separate legacy workflow after trusted
+    // named-app role verification; browser-local role hints cannot select it.
+﻿    const FACILITY_LABELS = { pool: "Swimming Pool", event: "Event Place", cottage: "Cottage", ktv: "KTV" };
+    function selectedGuestReference() {
+        return window.GuestAccess?.state.reservation?.reference || new URL(location.href).searchParams.get("reservation");
+    }
+    function guestBookingUrl(page) {
+        const reference = selectedGuestReference();
+        return page + (/^CBLR-[0-9]{6}$/.test(reference || "") ? "?reservation=" + encodeURIComponent(reference) : "");
+    }
+    function guestCloudTest() {
+        return window.SHARED_RESERVATIONS_CONFIG?.cloudTest === true || (["localhost", "127.0.0.1"].includes(location.hostname) && location.port === "5001");
+    }
+    async function prepareGuestFacilityLayout(kind) {
+        document.body.classList.add("guest-facility-page", "guest-public-page");
+        for (const href of ["css/public-header.css", "css/guest-facilities.css"]) {
+            await new Promise((resolve, reject) => { const style = document.createElement("link"); style.rel = "stylesheet"; style.href = href; style.onload = resolve; style.onerror = reject; document.head.appendChild(style); });
+        }
+        document.getElementById("controlSidebar").innerHTML = '<header data-public-header id="top"><a href="index.html">Catherine’s</a></header>';
+        await new Promise((resolve, reject) => { const script = document.createElement("script"); script.src = "js/public-header.js"; script.onload = resolve; script.onerror = reject; document.head.appendChild(script); });
+        const top = document.querySelector(".cs-topbar");
+        top.className = "guest-facility-heading";
+        const photos = {
+            pool: ['pool.png', 'Catherine’s swimming pool and arched bridge'],
+            event: ['pavilion.png', 'Catherine’s pavilion venue beside the illuminated pool'],
+            cottage: ['cottage.png', 'Catherine’s cottages and landscaped resort grounds at night']
+        };
+        const photo = photos[kind];
+        top.classList.toggle('has-facility-photo', Boolean(photo));
+        top.innerHTML = '<div class="guest-facility-heading-details"><p class="guest-eyebrow">CATHERINE’S · BAGASBAS BEACH</p><h1>'+FACILITY_LABELS[kind]+'</h1><p id="guestFacilityBooking"></p><p id="guestFacilityStatus" class="guest-status"></p><p>Read-only preview. Facility controls are unavailable.</p></div>'
+            + (photo ? '<img class="guest-facility-header-photo" src="assets/'+photo[0]+'" alt="'+escapeHtml(photo[1])+'">' : '');
+        const navigation = document.createElement("div"); navigation.className = "guest-facility-navigation";
+        navigation.innerHTML = '<nav class="guest-return-links" aria-label="Booking navigation"><a id="facilityBackDashboard">Back to Guest Dashboard</a><a id="facilityBackReservation">Back to My Reservation</a></nav><nav id="guestFacilityNav" aria-label="Your eligible facilities"></nav>';
+        top.before(navigation);
+        navigation.addEventListener("click", event => {
+            const link = event.target.closest("[data-facility]");
+            if (!link) return;
+            if (!window.GuestAccess.accessFor(link.dataset.facility).allowed) { event.preventDefault(); renderGuestFacility(kind, document.getElementById("pageContent")); }
+            else link.href = window.GuestAccess.facilityUrl(link.dataset.facility);
+        });
+        document.body.classList.remove("facility-pending");
+    }
+    function renderGuestFacility(kind, content) {
+        const Access = window.GuestAccess, access = Access.accessFor(kind), record = Access.state.reservation;
+        const reference = selectedGuestReference(), suffix = /^CBLR-[0-9]{6}$/.test(reference || "") ? "?reservation="+encodeURIComponent(reference) : "";
+        document.getElementById("facilityBackDashboard").href = "guest-dashboard.html"+suffix;
+        document.getElementById("facilityBackDashboard").hidden = guestCloudTest();
+        document.getElementById("facilityBackReservation").href = "my-reservation.html"+suffix;
+        for (const link of document.querySelectorAll('.public-header a')) if (new URL(link.href).pathname.endsWith('/my-reservation.html')) link.href = "my-reservation.html"+suffix;
+        document.getElementById("guestFacilityBooking").textContent = record ? "Booking " + record.reference : "No verified booking";
+        document.getElementById("guestFacilityStatus").textContent = record?.status || (Access.state.loading ? "Verifying booking" : "Unknown");
+        const nav = document.getElementById("guestFacilityNav"); nav.replaceChildren();
+        document.querySelector(".guest-facility-heading h1").textContent = kind === "event" && record?.facilities.some(item=>item.value === "event" && item.packageVersion === 2) ? "Event Place with Stage Band" : FACILITY_LABELS[kind];
+        for (const facility of ["pool", "event", "cottage", "ktv"]) {
+            if (!Access.accessFor(facility).allowed) continue;
+            const link = document.createElement("a"); link.dataset.facility = facility; link.href = Access.facilityUrl(facility);
+            const bundle = record.facilities.some(item => item.value === "event" && item.packageVersion === 2);
+            link.textContent = facility === "event" && bundle ? "Event Place with Stage Band" : FACILITY_LABELS[facility];
+            if (facility === kind) link.setAttribute("aria-current", "page");
+            nav.appendChild(link);
+        }
+        content.dataset.eligible = String(access.allowed);
+        if (!access.allowed) {
+            if (kind === "ktv") window.KtvPreview?.unmount();
+            let reason = Access.state.loading ? "Checking your selected booking. Facility access is locked while verification is in progress." : record?.status === "Confirmed" ? "Your booking is confirmed. Facility access stays locked until check-in is saved." : record?.status === "Pending Verification" ? "Your booking is waiting for approval. Facility access is locked." : record && record.status === "Checked In" ? "This facility is not included in your selected booking." : "Your booking could not be verified for this facility. Return to My Reservation to sign in or select your booking.";
+            content.innerHTML = '<section class="guest-facility-card cs-locked"><h2>Facility access is locked</h2><p>'+escapeHtml(reason)+'</p><a class="guest-facility-button" href="'+guestBookingUrl(guestCloudTest()?"my-reservation.html":"guest-dashboard.html")+'">'+(guestCloudTest()?"Back to My Reservation":"Back to Guest Dashboard")+'</a></section>';
+            return;
+        }
+        if (kind === "cottage" && window.ReservationDeviceControls?.enabled && content.querySelector("[data-cottage-controls]")) return;
+        if (kind === "ktv" && content.querySelector("#karaokePreview")) return;
+        const state = (label, value) => '<div><dt>'+label+'</dt><dd>'+value+'</dd></div>';
+        if (kind === "pool") {
+            content.innerHTML = '<section class="guest-facility-card"><span class="guest-preview-label">Preview</span><h2>Pool RGB lighting</h2><p>Pool RGB lighting is unavailable in this read-only preview.</p><dl class="guest-device-states">'+state("RGB lighting", "Unavailable")+'</dl></section>';
+        } else if (kind === "event") {
+            content.innerHTML = '<section class="guest-facility-card"><span class="guest-preview-label">Preview</span><h2>Event Mode</h2><p>Preview of a coordinated Event experience. Controls and live device readings are unavailable.</p><dl class="guest-device-states">'+state("Pavilion lights", "Unknown")+state("Stage RGB", "Unavailable")+state("Event music", "Unavailable")+state("Pool effect", "Unavailable")+'</dl><p class="guest-capability">Sound-reactive stage spotlight capability: Preview only. Live sound level and lighting state: Unknown.</p></section>';
+        } else if (kind === "cottage") {
+            content.innerHTML = window.ReservationDeviceControls?.enabled ? '' : '<section class="guest-facility-card"><span class="guest-preview-label">Preview</span><h2>Cottage lighting</h2><dl class="guest-device-states">'+state("Lighting", "Unavailable")+'</dl><p>The lighting setup is not verified. Lighting controls and cottage assignment are unavailable in this preview.</p></section>';
+        } else {
+            content.innerHTML = '<section class="guest-facility-card"><span class="guest-preview-label">Preview</span><h2>KTV room</h2><dl class="guest-device-states">'+state("Sliding-door status", "Unknown")+state("Hall-confirmed readiness", "Unknown")+state("Lighting state", "Unknown")+state("Karaoke display", "Unknown")+state("Audio playback", "Unavailable")+'</dl><p>Live door, readiness, lighting and display readings are not connected in this preview.</p><p>Diorama speaker playback is unavailable. The browser-only karaoke preview is below.</p></section>';
+        }
+    }
+
+    async function prepareFacility(kind) {
+        const Access = window.GuestAccess;
+        if (!Access) {
+            await prepareGuestFacilityLayout(kind);
+            document.getElementById("facilityBackDashboard").href = guestBookingUrl("guest-dashboard.html");
+            document.getElementById("facilityBackDashboard").hidden = guestCloudTest();
+            document.getElementById("facilityBackReservation").href = guestBookingUrl("my-reservation.html");
+            renderLocked(document.getElementById("pageContent"), { reason: "Your booking could not be verified. Return to My Reservation to sign in or retry." });
+            return true;
+        }
+        const content = document.getElementById("pageContent");
+        const markup = content.innerHTML;
+        renderLocked(content, { reason: "Verifying shared reservation..." });
+        let account;
+        try { account = await window.SharedReservations.identity(); } catch { account = null; }
+        if (account?.admin) {
+            facilityAdmin = true;
+            let roleVersion = 0;
+            const off = window.SharedReservations.watchIdentity(async user => {
+                const current = ++roleVersion; facilityAdmin = false;
+                if (!user || user.uid !== account.user.uid) return;
+                try { const verified = await window.SharedReservations.identity(true); if (current === roleVersion) facilityAdmin = verified.user.uid === user.uid; } catch { /* Dispatch stays disabled. */ }
+            });
+            window.addEventListener("pagehide", off, { once: true });
+            // Retain existing admin controllers/configuration, loaded only here.
+            for (const name of ["database", "firebase-config", "diorama-link"]) {
+                await new Promise((resolve, reject) => { const script = document.createElement("script"); script.src = "js/" + name + ".js"; script.onload = resolve; script.onerror = reject; document.head.appendChild(script); });
+            }
+            content.innerHTML = markup;
+            document.body.classList.remove("facility-pending");
+            return false;
+        }
+        await prepareGuestFacilityLayout(kind);
+        const render = () => renderGuestFacility(kind, content);
+        // Capture also blocks synthetic events and controls whose disabled
+        // property was changed in DevTools; there is no guest device transport.
+        if (kind === "cottage" && window.ReservationDeviceControls?.enabled) {
+            const notice = document.querySelector(".guest-facility-heading-details > p:last-child");
+            if (notice) notice.textContent = "Cottage controls use verified reservation access and controller acknowledgements.";
+        }
+        const blockAction = event => {
+            if (kind === "cottage" && window.ReservationDeviceControls?.enabled && event.target.closest('[data-cottage-controls]')) return;
+            if (kind === "ktv" && event.target.closest(".karaoke-preview")) return;
+            if (!event.target.closest("button,input,select,textarea,[data-light],[data-song]")) return;
+            event.preventDefault(); event.stopImmediatePropagation(); Access.guestAction(kind);
+        };
+        content.addEventListener("click", blockAction, true);
+        content.addEventListener("input", blockAction, true);
+        content.addEventListener("change", blockAction, true);
+        const unsubscribe = Access.subscribe(() => { render(); if (kind === "cottage" && Access.accessFor(kind).allowed) window.ReservationDeviceControls?.mount(content); if (kind === "ktv" && Access.accessFor(kind).allowed) window.KtvPreview?.mount(content); else if (kind === "ktv") window.KtvPreview?.unmount(); });
+        if (kind === "cottage" && Access.accessFor(kind).allowed) window.ReservationDeviceControls?.mount(content);
+        window.addEventListener("pagehide", unsubscribe, { once: true });
+        return true;
+    }
+
     window.ControlShell = {
+        prepareFacility,
+        facilityLink() {
+            const link = window.DioramaLink;
+            return new Proxy(link, { get(target, key) {
+                if (["set", "update", "log"].includes(key)) return (...args) => { if (facilityAdmin) return target[key](...args); };
+                return typeof target[key] === "function" ? target[key].bind(target) : target[key];
+            } });
+        },
         init,
         role,
         isAdmin,

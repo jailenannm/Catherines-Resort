@@ -20,60 +20,19 @@
     >
 
     <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
 
-    <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossorigin
-    >
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
-        rel="stylesheet"
-    >
-
-</head>
+    <link rel="stylesheet" href="css/public-header.css">
+<link rel="stylesheet" href="css/location-bar.css"><link rel="stylesheet" href="css/footer.css"><script src="js/footer.js" defer></script></head>
 
 
-<body>
+<body class="guest-public-page">
 
 
 <!-- =========================================================
      TOP INFORMATION BAR
 ========================================================= -->
 
-<div class="top-bar">
-
-    <div class="top-left">
-
-        <span class="status-dot"></span>
-
-        <span>
-            Daet, Camarines Norte • Philippine Coastal Shore •
-            Interactive Diorama Connected
-        </span>
-
-    </div>
-
-
-    <div class="top-right">
-
-        <span>
-            Bagasbas Beachfront
-        </span>
-
-        <span>
-            Live Tide: +1.2m Rising
-        </span>
-
-        <span>
-            Water: 28°C Tropical
-        </span>
-
-    </div>
-
-</div>
+<div class="top-bar" data-location-bar><span>Bagasbas, Daet, Camarines Norte</span></div>
 
 
 
@@ -81,86 +40,7 @@
      NAVIGATION
 ========================================================= -->
 
-<header class="navbar">
-
-    <a
-        href="index.html"
-        class="brand"
-    >
-
-        <img
-            src="assets/Catherine's Logo.png"
-            alt="Catherine's Bagasbas Lighthouse Resort"
-        >
-
-        <div class="brand-name">
-
-            <strong>
-                Catherine’s
-            </strong>
-
-            <span>
-                BAGASBAS LIGHTHOUSE RESORT
-            </span>
-
-        </div>
-
-    </a>
-
-
-    <nav class="main-nav">
-
-        <a href="index.html">
-            Home
-        </a>
-
-        <a href="index.html#about">
-            About
-        </a>
-
-        <a href="index.html#facilities">
-            Facilities
-        </a>
-
-        <a
-            href="reservation.html"
-            class="active"
-        >
-            Reservation
-        </a>
-
-        <a href="index.html#contact">
-            Contact
-        </a>
-
-    </nav>
-
-
-    <div class="nav-actions">
-
-        <button
-            class="book-button"
-            id="bookButton"
-        >
-            Book Now
-        </button>
-
-
-        <button
-            class="profile-button"
-            id="profileButton"
-            aria-label="Open guest dashboard"
-        >
-
-            <span class="profile-icon">
-                ♙
-            </span>
-
-        </button>
-
-    </div>
-
-</header>
+<header data-public-header id="top"><a href="index.html">Catherine’s</a></header>
 
 
 
@@ -214,19 +94,6 @@
 
             </div>
 
-
-            <div class="security-badge">
-
-                <span class="security-icon">
-                    ♢
-                </span>
-
-                <span>
-                    256-bit Encrypted Reservation Vault
-                </span>
-
-            </div>
-
         </div>
 
     </div>
@@ -245,12 +112,12 @@
 
 
         <div
-            class="progress-step completed"
+            class="progress-step active" aria-current="step"
             data-step="1"
         >
 
             <div class="step-circle">
-                ✓
+                1
             </div>
 
             <div class="step-text">
@@ -274,7 +141,7 @@
 
 
         <div
-            class="progress-step active"
+            class="progress-step"
             data-step="2"
         >
 
@@ -406,9 +273,7 @@
 
                     </div>
 
-                    <div class="climate-badge">
-                        ☼ Ocean Climate: Calm 28°C
-                    </div>
+
 
                 </div>
 
@@ -427,7 +292,7 @@
 
                             <input
                                 type="date"
-                                id="checkinDate"
+                                id="checkinDate" aria-describedby="availabilityStatus"
                                 required
                             >
 
@@ -437,9 +302,7 @@
 
                         </div>
 
-                        <small class="field-note">
-                            ≋ Available • High Tide Sunset 5:48 PM
-                        </small>
+                        <small class="field-note" id="availabilityStatus" role="status" aria-live="polite">Pick a date. Availability will be checked after facility selection.</small>
 
                     </div>
 
@@ -453,29 +316,16 @@
 
                         <div class="select-wrapper">
 
-                            <select id="stayDuration">
-
-                                <option value="4500">
-                                    22-Hour Coastal Haven
-                                    (2:00 PM – 12:00 PM Next Day)
-                                </option>
-
-                                <option value="4500">
-                                    Day Retreat
-                                    (8:00 AM – 6:00 PM)
-                                </option>
-
-                                <option value="4500">
-                                    Evening Sanctuary
-                                    (4:00 PM – 12:00 AM)
-                                </option>
-
-                            </select>
+                            <select id="stayDuration" aria-describedby="staySlotLabel">
+ <option value="coastal-22h">22-hour Coastal Haven</option>
+ <option value="day-retreat">Day Retreat</option>
+ <option value="evening-sanctuary">Evening Sanctuary</option>
+</select><p id="staySlotLabel" class="stay-slot-label"></p>
 
                         </div>
 
                         <small class="field-note">
-                            Standard cottage check-in begins at 2:00 PM
+                            Review the selected stay slot above.
                         </small>
 
                     </div>
@@ -484,6 +334,12 @@
 
 
 
+                <section class="availability-calendar" aria-label="Reservation date calendar">
+                    <div class="calendar-navigation"><button type="button" id="calendarPrevious" aria-label="Previous month">Previous</button><span>Choose your check-in date</span><button type="button" id="calendarNext" aria-label="Next month">Next</button></div>
+                    <div id="calendarMonths" class="calendar-months"></div>
+                    <p class="calendar-note">Availability applies only to the selected facilities and stay slot. Browsing dates does not reserve a slot.</p>
+                    <p id="guestRangePreference" class="calendar-note" hidden></p>
+                </section>
                 <!-- Guest demographics -->
 
                 <div class="guest-demographics">
@@ -883,17 +739,9 @@
 
                     <label class="facility-option selected">
 
-                        <input
-                            type="checkbox"
-                            name="facility"
-                            value="cottage"
-                            data-price="4500"
-                            checked
-                        >
 
-                        <div class="facility-icon">
-                            ⌂
-                        </div>
+
+                        <div class="facility-thumbnail"><img src="assets/cottage.png" alt="Catherine’s cottages and landscaped resort grounds at night" loading="lazy"></div>
 
                         <div class="facility-information">
 
@@ -944,9 +792,13 @@
                                 per session
                             </span>
 
-                            <span class="checkmark">
-                                ✓
-                            </span>
+                            <input
+                            type="checkbox"
+                            name="facility"
+                            value="cottage"
+                            data-price="4500"
+                            checked
+                        ><span class="facility-selection-state">Selected</span>
 
                         </div>
 
@@ -958,19 +810,13 @@
 
                     <label class="facility-option selected">
 
-                        <input
-                            type="checkbox"
-                            name="facility"
-                            value="pool"
-                            data-price="1200"
-                            checked
-                        >
 
-                        <div class="facility-icon">
-                            ≋
-                        </div>
+
+
+                        <div class="facility-thumbnail"><img src="assets/pool.png" alt="Catherine’s swimming pool and arched bridge" loading="lazy"></div>
 
                         <div class="facility-information">
+                            <small id="eventPoolIncluded" class="selection-note" hidden>Swimming Pool is included in the Event Package — no separate Pool charge.</small>
 
                             <div class="facility-title">
 
@@ -1015,9 +861,13 @@
                                 party pass
                             </span>
 
-                            <span class="checkmark">
-                                ✓
-                            </span>
+                            <input
+                            type="checkbox"
+                            name="facility"
+                            value="pool"
+                            data-price="1200"
+                            checked
+                        ><span class="facility-selection-state">Selected</span>
 
                         </div>
 
@@ -1029,16 +879,9 @@
 
                     <label class="facility-option">
 
-                        <input
-                            type="checkbox"
-                            name="facility"
-                            value="ktv"
-                            data-price="2200"
-                        >
 
-                        <div class="facility-icon">
-                            ♪
-                        </div>
+
+                        <div class="facility-thumbnail facility-photo-fallback"><span>KTV Lounge<br><small>Photo unavailable</small></span></div>
 
                         <div class="facility-information">
 
@@ -1085,9 +928,12 @@
                                 per session
                             </span>
 
-                            <span class="checkmark">
-                                ✓
-                            </span>
+                            <input
+                            type="checkbox"
+                            name="facility"
+                            value="ktv"
+                            data-price="2200"
+                        ><span class="facility-selection-state">Select</span>
 
                         </div>
 
@@ -1095,27 +941,20 @@
 
 
 
-                    <!-- Event Place -->
+                    <!-- Celebration Event Package -->
 
                     <label class="facility-option">
 
-                        <input
-                            type="checkbox"
-                            name="facility"
-                            value="event"
-                            data-price="15000"
-                        >
 
-                        <div class="facility-icon">
-                            ♜
-                        </div>
+
+                        <div class="facility-thumbnail"><img src="assets/pavilion.png" alt="Catherine’s pavilion building beside the illuminated pool" loading="lazy"></div>
 
                         <div class="facility-information">
 
                             <div class="facility-title">
 
                                 <h3>
-                                    Celebration Grand Event Place
+                                    Celebration Event Package
                                 </h3>
 
                                 <span class="tag">
@@ -1125,7 +964,7 @@
                             </div>
 
                             <p>
-                                Covered coastal pavilion with sweeping
+                                Includes Event Place, Swimming Pool, and Stage Band. Covered coastal pavilion with sweeping
                                 ocean breeze, stage setup with dynamic
                                 DMX lighting, audio console, and banquet
                                 seating for up to 300 guests.
@@ -1138,7 +977,7 @@
                                 </span>
 
                                 <span>
-                                    ▣ Elevated Stage
+                                    ▣ Stage Band included
                                 </span>
 
                             </div>
@@ -1155,9 +994,12 @@
                                 full day event
                             </span>
 
-                            <span class="checkmark">
-                                ✓
-                            </span>
+                            <input
+                            type="checkbox"
+                            name="facility"
+                            value="event"
+                            data-price="15000"
+                        ><span class="facility-selection-state">Select</span>
 
                         </div>
 
@@ -1169,16 +1011,9 @@
 
                     <label class="facility-option buyout">
 
-                        <input
-                            type="checkbox"
-                            name="facility"
-                            value="buyout"
-                            data-price="35000"
-                        >
 
-                        <div class="facility-icon special">
-                            ★
-                        </div>
+
+                        <div class="facility-thumbnail"><img src="assets/cottage.png" alt="Wide view of Catherine’s resort grounds, cottages and pool" loading="lazy"></div>
 
                         <div class="facility-information">
 
@@ -1225,9 +1060,12 @@
                                 complete buyout
                             </span>
 
-                            <span class="checkmark">
-                                ✓
-                            </span>
+                            <input
+                            type="checkbox"
+                            name="facility"
+                            value="buyout"
+                            data-price="35000"
+                        ><span class="facility-selection-state">Select</span>
 
                         </div>
 
@@ -1445,7 +1283,7 @@
                 <div class="summary-image">
 
                     <img
-                        src="assets/resort-overview.jpg"
+                        src="assets/catherines-lighthouse-twilight.png"
                         alt="Catherine's Bagasbas Lighthouse Resort"
                         onerror="this.style.display='none'"
                     >
@@ -1509,12 +1347,10 @@
                         <div>
 
                             <span>
-                                ◷ Access Window:
+                                Stay Duration &amp; Slot:
                             </span>
 
-                            <strong>
-                                Coastal Haven
-                            </strong>
+                            <strong id="summaryDuration">Select a stay slot</strong>
 
                         </div>
 
@@ -1641,13 +1477,11 @@
                         <div>
 
                             <strong>
-                                Physical Guest Keycard Ready
+                                RFID Assignment Pending
                             </strong>
 
                             <p>
-                                Your reservation includes an NFC guest
-                                card that can be used for authorized
-                                guest access and resort services.
+                                An administrator assigns a card after confirmation. Live RFID check-in and guest device controls are not enabled.
                             </p>
 
                         </div>
@@ -1678,32 +1512,9 @@
 
 
 
-            <!-- Surf conditions -->
 
-            <div class="surf-card">
 
-                <div class="surf-icon">
-                    ≋
-                </div>
 
-                <div>
-
-                    <strong>
-                        Bagasbas Surf Conditions
-                    </strong>
-
-                    <span>
-                        2.1ft gentle swells • Beginner friendly
-                    </span>
-
-                </div>
-
-                <span class="tide-status">
-                    Tide<br>
-                    Rising
-                </span>
-
-            </div>
 
 
         </aside>
@@ -1720,157 +1531,7 @@
      FOOTER
 ========================================================= -->
 
-<footer class="footer">
-
-    <div class="footer-grid">
-
-
-        <div class="footer-brand">
-
-            <a
-                href="index.html"
-                class="footer-logo"
-            >
-
-                <img
-                    src="assets/Catherine's Logo.png"
-                    alt="Catherine's"
-                >
-
-                <span>
-                    Catherine’s
-                </span>
-
-            </a>
-
-
-            <p>
-                An exclusive seaside coastal sanctuary perched
-                on the shores of Bagasbas Beach. Merging tactile
-                beachfront luxury with responsive smart resort
-                architecture.
-            </p>
-
-
-            <strong>
-                DAET • CAMARINES NORTE • PHILIPPINES
-            </strong>
-
-        </div>
-
-
-
-        <div class="footer-column">
-
-            <h3>
-                Sanctuary Quarters
-            </h3>
-
-            <a href="index.html#facilities">
-                All Resort Facilities
-            </a>
-
-            <a href="index.html#facilities">
-                Seaside Cottages
-            </a>
-
-            <a href="index.html#facilities">
-                Infinity Pool & Bridge
-            </a>
-
-            <a href="index.html#facilities">
-                Celebration Grand Hall
-            </a>
-
-            <a href="index.html#facilities">
-                Lighthouse KTV & Skydeck
-            </a>
-
-        </div>
-
-
-
-        <div class="footer-column">
-
-            <h3>
-                Guest Experience
-            </h3>
-
-            <a href="reservation.html">
-                Make a Reservation
-            </a>
-
-            <a href="reservation.html">
-                Availability Calendar
-            </a>
-
-            <a href="#">
-                Track Existing Booking
-            </a>
-
-            <a href="guest-dashboard.html">
-                Guest Smart Diorama
-            </a>
-
-            <a href="#">
-                Management Console
-            </a>
-
-        </div>
-
-
-
-        <div class="footer-column concierge-footer">
-
-            <h3>
-                Bagasbas Concierge
-            </h3>
-
-            <p>
-                Direct beachfront line:
-                +63 (054) 881-2345
-            </p>
-
-            <p>
-                Email:
-                concierge@catherineslighthouse.ph
-            </p>
-
-            <strong>
-                ◉ Bagasbas Beach Road, Daet, 4600
-            </strong>
-
-        </div>
-
-    </div>
-
-
-    <div class="footer-bottom">
-
-        <span>
-            © 2025 Catherine’s Bagasbas Lighthouse Resort.
-            All rights reserved.
-        </span>
-
-        <div>
-
-            <a href="#">
-                Privacy Policy
-            </a>
-
-            <a href="#">
-                Terms of Sanctuary
-            </a>
-
-            <a href="#">
-                Reservation Security
-            </a>
-
-        </div>
-
-    </div>
-
-</footer>
+<div id="footer-container"></div>
 
 
 
@@ -1928,7 +1589,15 @@
 <script src="js/database.js"></script>
 <!-- EmailJS SDK -->
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-database-compat.js"></script>
+<script src="js/shared-reservations-config.js"></script>
+<script src="js/shared-reservations.js"></script>
+<script src="js/booking-slots.js"></script>
+<script src="js/public-header.js"></script>
 <script src="js/reservation.js"></script>
+<script src="js/reservation-calendar.js"></script>
 
 </body>
 

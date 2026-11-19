@@ -1,0 +1,17 @@
+node_modules/
+*-debug.log
+test-results/
+.local/
+esp32_firmware/RFID_WiFi_Bench/bench-secrets.h
+esp32_firmware/RFID_Production/production-secrets.h
+esp32_firmware/**/device-sync-secrets.h
+esp32_firmware/ESP1_Reservation_Sync/bench-secrets.h
+hosting-public/
+
+# ESP2 cottage private Wi-Fi/polarity configuration
+esp32_firmware/ESP2_Cottage_Sync/cottage-config.h
+
+# Facilities Controller private network/polarity configuration
+esp32_firmware/ESP2_Facilities_Controller/facilities-config.h
+
+esp32_firmware/ESP2_Facilities_V2/facilities-v2-config.h

@@ -9,10 +9,11 @@
      guest/*                    last checked-in guest
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
     const Shell = window.ControlShell;
-    const Link = window.DioramaLink;
+    if (await Shell.prepareFacility("cottage")) return;
+    const Link = Shell.facilityLink();
 
     Shell.init("cottage");
 

@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),crypto=require('node:crypto'),{execFileSync}=require('node:child_process');
+const folder='esp32_firmware/ESP2_Cottage_Sync/';
+for(const file of ['ReservationDeviceSync.h','DeviceOutputLease.h']) assert.equal(fs.readFileSync(folder+file,'utf8'),fs.readFileSync('esp32_firmware/shared/'+file,'utf8'));
+const firmware=fs.readFileSync(folder+'ESP2_Cottage_Sync.ino','utf8');
+assert.match(firmware,/#ifndef CBLR_COTTAGE_ACTIVE_LOW/);
+assert.match(firmware,/#if CBLR_COTTAGE_ACTIVE_LOW != 0 && CBLR_COTTAGE_ACTIVE_LOW != 1/);
+assert.match(firmware,/#define CBLR_DEVICE_ID "esp2"/);
+assert.match(firmware,/COTTAGE_RELAY_PIN = 26/);
+assert.match(firmware,/ReservationDeviceSync::begin\(applyCottages\)/);
+assert(!firmware.includes('outputApplied('));
+assert(!firmware.includes('http.POST') && !firmware.includes('/scan'));
+assert.equal((firmware.match(/pinMode\(/g)||[]).length,1);
+assert(!fs.existsSync(folder+'cottage-config.h'));assert(!fs.existsSync(folder+'device-sync-secrets.h'));
+execFileSync('git',['check-ignore','--no-index',folder+'cottage-config.h',folder+'device-sync-secrets.h'],{stdio:'pipe'});
+const before=JSON.parse(fs.readFileSync('.local/esp2-cottage-build/preserved-files.json','utf8'));
+for(const [file,hash]of Object.entries(before))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),hash,'Protected source changed: '+file);
+console.log('PASS: identical shared helpers, mandatory polarity guard, esp2-only identity, only GPIO26 initialized, independent callback authority, no RFID endpoint/local bypass, private config ignored, ESP1/backend fingerprints unchanged. Source checks; physical relay unverified.');

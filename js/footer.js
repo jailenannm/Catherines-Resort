@@ -23,6 +23,9 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(html => {
 
       footerContainer.innerHTML = html;
+      footerContainer.querySelector('[data-footer-year]').textContent = new Date().getFullYear();
+      // The Contact anchor is part of this async component, including direct visits.
+      if (location.hash === '#contact') requestAnimationFrame(() => footerContainer.querySelector('#contact').scrollIntoView());
 
     })
 

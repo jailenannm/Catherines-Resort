@@ -1,137 +1,31 @@
 "use strict";
-
-document.addEventListener("DOMContentLoaded", () => {
-    const Shell = window.ControlShell;
-    const Link = window.DioramaLink;
-    const DB = window.ResortDB;
-
-    Shell.init("checkout");
-
-    const r = Shell.role();
-    if (!r) {
-        Shell.renderLocked(document.getElementById("pageContent"), { 
-            allowed: false, 
-            reason: "Please sign in to view check-out options.", 
-            action: "login" 
-        });
-        return;
-    }
-    
-    const isAdmin = Shell.isAdmin();
-
-    const $ = id => document.getElementById(id);
-
-    const el = {
-        guestSection: $("guestSection"),
-        adminSection: $("adminSection"),
-        activeList: $("activeList"),
-        btnCheckout: $("btnCheckout"),
-        checkoutBox: $("checkoutBox"),
-        checkoutSuccess: $("checkoutSuccess"),
-        prompt: $("checkoutPrompt")
-    };
-    
-    if (isAdmin) {
-        el.adminSection.style.display = "block";
-        el.guestSection.style.display = "none";
-    }
-
-    let guestState = Link.get("guest") || {};
-
-    function loadActiveGuests() {
-        if (!isAdmin) return;
-        const resList = DB.getReservations().filter(r => Shell.isCheckedIn(r));
-        
-        if (resList.length === 0) {
-            el.activeList.innerHTML = `<div style="color:var(--muted); font-size:14px; text-align:center; padding: 20px;">No guests currently checked in.</div>`;
-            return;
-        }
-
-        el.activeList.innerHTML = resList.map(r => `
-            <div class="res-item">
-                <div>
-                    <strong style="display:block; color:#fbefdc">${Shell.escapeHtml(r.guestName)}</strong>
-                    <small style="color:var(--muted)">${r.reference}</small>
-                </div>
-                <button type="button" class="cs-btn lg checkout-btn" data-ref="${r.reference}" style="border: 1px solid #f44336; color: #f44336; background: transparent;">Check Out</button>
-            </div>
-        `).join("");
-        
-        el.activeList.querySelectorAll(".checkout-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                if (window.confirm("Are you sure you want to check out this guest?")) {
-                    processCheckOut(btn.dataset.ref);
-                }
-            });
-        });
-    }
-
-    function processCheckOut(reference) {
-        const res = DB.findReservationByCode(reference);
-        if (res) {
-            DB.updateReservationStatus(res.reference, "Checked Out");
-            
-            // If this was the guest currently active in the diorama
-            if (guestState.reference === res.reference) {
-                // Clear diorama state
-                Link.update("guest", {
-                    reference: "",
-                    name: "",
-                    cottage: 0,
-                    checkedIn: false,
-                    checkinAt: 0
-                });
-                
-                // Clear specific usages if they had them
-                const cottageNum = Shell.cottageFromReservation(res);
-                if (cottageNum > 0) {
-                    Link.update(`cottages/c${cottageNum}`, { light: false, occupied: false, reference: "" });
-                }
-                
-                // If they had the event mode on
-                const eventState = Link.get("event") || {};
-                if (eventState.reference === res.reference) {
-                    Link.update("event", {
-                        mode: false,
-                        hallLight: false,
-                        stageLight: false,
-                        music: false,
-                        reference: ""
-                    });
-                }
-                
-                Link.log(`Check-out: ${res.guestName} (#${res.reference})`);
-            }
-            
-            if (isAdmin) {
-                Shell.toast(`Checked out ${res.guestName}.`);
-                loadActiveGuests();
-            } else {
-                el.checkoutBox.style.display = "none";
-                el.checkoutSuccess.classList.add("active");
-            }
-        }
-    }
-    
-    // Guest checkout logic
-    if (!isAdmin) {
-        const res = Shell.currentReservation();
-        if (res && Shell.isCheckedIn(res)) {
-            el.btnCheckout.addEventListener("click", () => {
-                if (window.confirm("Are you sure you want to check out?")) {
-                    processCheckOut(res.reference);
-                }
-            });
-        } else {
-            el.btnCheckout.disabled = true;
-            el.prompt.textContent = "Not Checked In";
-            el.prompt.style.color = "var(--muted)";
-        }
-    }
-
-    Link.on("guest", value => {
-        guestState = value || {};
-    });
-
-    loadActiveGuests();
+// Shared lifecycle only. No local history, storage clearing, device connector or commands.
+document.addEventListener('DOMContentLoaded',()=>{
+ const $=id=>document.getElementById(id),Shared=window.SharedReservations;
+ const reference=new URL(location.href).searchParams.get('reservation');
+ let off=()=>{},busy=false,state;
+ $('checkoutBack').href='my-reservation.html'+(/^CBLR-[0-9]{6}$/.test(reference||'')?'?reservation='+encodeURIComponent(reference):'');
+ const emulator=window.SHARED_RESERVATIONS_CONFIG?.mode==='emulator'&&window.SHARED_RESERVATIONS_CONFIG?.cloudTest!==true;
+ function render(next){
+  state=next;const record=next.reservation;
+  $('checkoutReference').textContent=record?'Booking '+record.reference:'Your reservation';
+  $('checkoutStatus').textContent=record?.status||'';
+  $('requestCheckout').hidden=!record||record.status!=='Checked In';$('requestCheckout').disabled=busy;
+  $('checkoutSignIn').hidden=Boolean(next.user)||next.loading;
+  $('retryCheckout').hidden=next.loading||Boolean(record);
+  $('checkoutMessage').textContent=next.loading?'Loading your shared reservation…':!record?'This reservation is unavailable. Sign in or return to My Reservation to select your booking.':record.status==='Checked In'?'Request checkout when ready. Reserved facilities lock after the shared request is saved.':record.status==='Checking Out'?'Your checkout request is saved. Facility access is locked. Please wait for front-desk departure verification; completion is simulated only by a trusted emulator fixture.':record.status==='Completed'?'Your shared booking is Completed. Facility access remains locked. This emulator does not confirm physical departure.':'This booking is not eligible to request checkout.';
+ }
+ function start(){off();render({loading:true});off=Shared.subscribeOwnedReservation(reference,render);}
+ $('retryCheckout').addEventListener('click',start);
+ $('checkoutSignIn').addEventListener('click',()=>{if(/^CBLR-[0-9]{6}$/.test(reference||'')){try{sessionStorage.setItem('myReservationSignInReference',reference);}catch{/* Optional selector only. */}}});
+ $('requestCheckout').addEventListener('click',async()=>{
+  if(busy||state?.reservation?.status!=='Checked In')return;
+  const selected=state.reservation,owner=state.user?.uid;
+  busy=true;$('requestCheckout').disabled=true;
+  try{const result=await Shared.requestCheckout(selected.reference);if(state.user?.uid===owner&&state.reservation?.reference===selected.reference)render({...state,reservation:{...state.reservation,status:result.status}});}
+  catch(error){if(state.user?.uid===owner)$('checkoutMessage').textContent=error.message||'Checkout request failed. Please retry.';}
+  finally{busy=false;$('requestCheckout').disabled=false;}
+ });
+ if(emulator)start();else $('checkoutMessage').textContent='Checkout is unavailable in this environment. Live departure verification is not configured. Return to My Reservation.';
+ window.addEventListener('pagehide',()=>off(),{once:true});
 });

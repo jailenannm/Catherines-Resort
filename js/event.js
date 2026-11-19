@@ -11,10 +11,11 @@
      event/soundLevel   0 - 100 (from MAX9814 sensor)
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
     const Shell = window.ControlShell;
-    const Link = window.DioramaLink;
+    if (await Shell.prepareFacility("event")) return;
+    const Link = Shell.facilityLink();
 
     Shell.init("event");
 

@@ -1,0 +1,11 @@
+{
+  "database": { "rules": "shared-reservations.emulator.rules.json" },
+  "emulators": {
+    "auth": { "host": "127.0.0.1", "port": 29099 },
+    "database": { "host": "127.0.0.1", "port": 29000 },
+    "hub": { "host": "127.0.0.1", "port": 24400 },
+    "logging": { "host": "127.0.0.1", "port": 24500 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  }
+}
